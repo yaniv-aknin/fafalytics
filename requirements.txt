@@ -1,0 +1,3 @@
+faf-replay-parser
+click
+zstd

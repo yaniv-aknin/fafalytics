@@ -1,3 +1,4 @@
 faf-replay-parser
 click
 zstd
+redis

@@ -16,9 +16,11 @@ HEADER_EXTRACT = {
     'player1_name': ('armies/0/PlayerName', DECODE),
     'player1_faction': ('armies/0/Faction', FACTIONS),
     'player1_start_spot': 'armies/0/StartSpot',
+    'player1_rating': 'armies/0/PL',
     'player2_name': ('armies/1/PlayerName', DECODE),
     'player2_faction': ('armies/1/Faction', FACTIONS),
     'player2_start_spot': 'armies/1/StartSpot',
+    'player2_rating': 'armies/1/PL',
 }
 
 @click.command()

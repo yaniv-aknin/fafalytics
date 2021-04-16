@@ -7,6 +7,7 @@ from typing import Iterable
 import fafreplay
 import zstd
 
+FACTIONS = lambda x: {k:v for k,v in enumerate('uef aeon cybran seraphim nomads unknown'.split())}[x-1]
 ALL_COMMANDS = tuple(getattr(fafreplay.commands, c) for c in fafreplay.commands.__all__ if c != '__doc__')
 
 def extract_v1(buf):

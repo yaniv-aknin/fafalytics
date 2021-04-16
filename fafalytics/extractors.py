@@ -1,7 +1,10 @@
 import click
+import functools
 import json
 
 from .datastore import get_client
+from .parsing import read_headers
+from .pyutils import Context
 
 def load_game_json(handle):
     """Load a bunch of Game models from a file handle.
@@ -44,7 +47,7 @@ def query_dict(d, query):
     return postprocess(d)
 
 FACTIONS = lambda x: {k:v for k,v in enumerate('uef aeon cybran seraphim nomads unknown'.split())}[x-1]
-EXTRACT = {
+BASE_EXTRACT = {
     "id": "id",
     "end_time": "attributes/endTime",
     "start_time": "attributes/startTime",
@@ -77,14 +80,14 @@ def output(func):
     return func
 
 @output
-def datastore(extractor, objects):
+def datastore(objects):
     client = get_client()
     for obj in objects:
         jsonified = {k: json.dumps(v) for k, v in obj.items()}
-        client.hmset('ex.%s.%s' % (extractor, obj['id']), jsonified)
+        client.hmset('ex.%s' % (obj['id']), jsonified)
 
 @output
-def console(extractor, objects):
+def console(objects):
     try:
         import IPython
         IPython.embed()
@@ -96,20 +99,50 @@ def console(extractor, objects):
 @click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')
 @click.pass_context
 def extract(ctx, output):
-    ctx.obj = {'output_func': OUTPUT_CALLBACKS[output]}
+    ctx.obj = Context()
+    ctx.obj.output_func = OUTPUT_CALLBACKS[output]
+
+def yields_outputs(func):
+    @functools.wraps(func)
+    def wrapper(ctx, *args, **kwargs):
+        output = [obj for obj in func(ctx, *args, **kwargs)]
+        ctx.obj.output_func(output)
+    return wrapper
 
 @extract.command()
 @click.argument('jsons', nargs=-1, type=click.File('r'))
 @click.pass_context
+@yields_outputs
 def base(ctx, jsons):
-    games = []
     for input_handle in jsons:
-        games.extend(load_game_json(input_handle))
-    outputs = []
-    for game in games:
-        assert game['inlined']['featuredMod']['attributes']['technicalName'] == 'ladder1v1'
-        output = {}
-        for key, query in EXTRACT.items():
-            output[key] = query_dict(game, query)
-        outputs.append(output)
-    ctx.obj['output_func']('base', outputs)
+        for game in load_game_json(input_handle):
+            assert game['inlined']['featuredMod']['attributes']['technicalName'] == 'ladder1v1'
+            output = {}
+            for key, query in BASE_EXTRACT.items():
+                output[key] = query_dict(game, query)
+            yield output
+
+DECODE = lambda b: b.decode()
+HEADER_EXTRACT = {
+    'scfa_version': 'scfa_version',
+    'replay_version': 'replay_version',
+    'map_name': ('scenario/name', DECODE),
+    'player1_name': ('armies/0/PlayerName', DECODE),
+    'player1_faction': ('armies/0/Faction', FACTIONS),
+    'player1_start_spot': 'armies/0/StartSpot',
+    'player2_name': ('armies/1/PlayerName', DECODE),
+    'player2_faction': ('armies/1/Faction', FACTIONS),
+    'player2_start_spot': 'armies/1/StartSpot',
+}
+
+@extract.command()
+@click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
+@click.pass_context
+@yields_outputs
+def header(ctx, replays):
+    for replay in replays:
+        json_header, binary_header = read_headers(replay)
+        output = {'id': json_header['uid'], 'launched_at': json_header['launched_at'], 'game_end': json_header['game_end']}
+        for key, query in HEADER_EXTRACT.items():
+            output[key] = query_dict(binary_header, query)
+        yield output

@@ -16,3 +16,6 @@ def block_wait(iterations: int, interval: float, message: str='', predicate: Cal
 
 def negate(f: Callable[[], bool]) -> bool:
     return lambda: not(f())
+
+class Context:
+    pass

@@ -78,3 +78,10 @@ def stop():
         block_wait(10, 0.1, predicate=negate(is_running))
     except TimeoutError:
         print('pid %d failed to exit' % pid)
+
+@datastore.command()
+@click.pass_context
+def restart(ctx):
+    if is_running():
+        ctx.invoke(stop)
+    ctx.invoke(start)

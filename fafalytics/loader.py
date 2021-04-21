@@ -7,6 +7,12 @@ from .output import OUTPUT_CALLBACKS, yields_outputs
 from .pyutils import query_dict
 
 class GameJsonResolver:
+    inline_relationships = (
+        ('playerStats',),
+        ('playerStats', 'player'),
+        ('mapVersion',),
+        ('mapVersion', 'map'),
+    )
     def __init__(self, doc: dict):
         self.doc = doc
         self.objects = {}
@@ -29,26 +35,26 @@ class GameJsonResolver:
     @staticmethod
     def key(obj):
         return obj['type'], obj['id']
-    def resolve(self, obj, path=frozenset()):
-        key = self.key(obj)
-        if key in path:
-            raise LookupError('%r in %r' % (key, path))
+    def resolve(self, obj, path):
         result = {'id': obj['id'], 'type': obj['type']}
         result.update(obj['attributes'])
         for rel_type, rel_data in obj.get('relationships', {}).items():
             rel_data = rel_data['data']
-            if rel_type not in self.known_types or not rel_data:
+            new_path = path + (rel_type,)
+            if new_path not in self.inline_relationships:
                 continue
             if isinstance(rel_data, list):
-                result[rel_type] = [self.resolve(self.find(**datum), path.union({key})) for datum in rel_data]
+                result[rel_type] = {str(index): self.resolve(self.find(**datum), new_path) for index, datum in enumerate(rel_data)}
             elif isinstance(rel_data, dict):
-                result[rel_type] = self.resolve(self.find(**rel_data), path.union({key}))
+                result[rel_type] = self.resolve(self.find(**rel_data), new_path)
+            elif rel_data is None:
+                continue
             else:
                 raise ValueError('unexpected relationship data %r' % rel_data)
         return result
     def __iter__(self):
         for game in self.doc['data']:
-            yield self.resolve(game)
+            yield self.resolve(game, ())
 
 @click.command()
 @click.argument('jsons', nargs=-1, type=click.File('r'))

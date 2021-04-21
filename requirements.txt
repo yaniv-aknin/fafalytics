@@ -4,3 +4,4 @@ zstd
 redis
 requests
 urlobject
+pyarrow

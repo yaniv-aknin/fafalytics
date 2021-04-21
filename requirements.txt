@@ -2,3 +2,5 @@ faf-replay-parser
 click
 zstd
 redis
+requests
+urlobject

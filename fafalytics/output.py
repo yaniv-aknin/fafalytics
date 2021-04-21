@@ -20,8 +20,10 @@ def output(func):
 def datastore(objects):
     client = get_client()
     for obj in objects:
-        jsonified = {k: json.dumps(v) for k, v in obj.items()}
-        client.hmset('ex.%s' % (obj['id']), jsonified)
+        key = 'game.%s' % obj['id']
+        current = json.loads(client.get(key) or '{}')
+        current.update(obj)
+        client.set(key, json.dumps(current))
 
 @output
 def console(objects):

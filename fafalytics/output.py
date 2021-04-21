@@ -23,7 +23,7 @@ def datastore(objects):
         key = 'game.%s' % obj['id']
         current = json.loads(client.get(key) or '{}')
         current.update(obj)
-        client.set(key, json.dumps(current))
+        client.set(key, json.dumps(current, default=lambda b: b.decode()))
 
 @output
 def console(objects):

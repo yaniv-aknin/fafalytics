@@ -10,5 +10,5 @@ from .datastore import get_client
 def export(output):
     client = get_client()
     game_ids = client.keys('game.*')
-    df = pd.DataFrame([json.loads(game) for game in client.mget(game_ids)])
+    df = pd.json_normalize([json.loads(game) for game in client.mget(game_ids)])
     df.set_index('id').to_csv(output)

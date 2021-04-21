@@ -67,10 +67,11 @@ def load_game_json(handle):
 @click.argument('jsons', nargs=-1, type=click.File('r'))
 @yields_outputs
 def load(output, jsons):
-    for input_handle in jsons:
-        for game in load_game_json(input_handle):
-            assert game['inlined']['featuredMod']['attributes']['technicalName'] == 'ladder1v1'
-            output = {}
-            for key, query in BASE_EXTRACT.items():
-                output[key] = query_dict(game, query)
-            yield output
+    with click.progressbar(jsons, label='Loading JSONs') as bar:
+        for input_handle in bar:
+            for game in load_game_json(input_handle):
+                assert game['inlined']['featuredMod']['attributes']['technicalName'] == 'ladder1v1'
+                output = {}
+                for key, query in BASE_EXTRACT.items():
+                    output[key] = query_dict(game, query)
+                yield output

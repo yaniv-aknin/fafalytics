@@ -1,9 +1,12 @@
 import functools
 import json
 
+import click
+
 from .datastore import get_client
 
 def yields_outputs(func):
+    @click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')
     @functools.wraps(func)
     def wrapper(output, *args, **kwargs):
         objects = [obj for obj in func(output, *args, **kwargs)]

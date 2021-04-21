@@ -9,7 +9,6 @@ from .pyutils import query_dict
 from .output import yields_outputs, OUTPUT_CALLBACKS
 
 @click.command()
-@click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @yields_outputs
 def extract(ctx, replays):

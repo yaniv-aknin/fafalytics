@@ -51,7 +51,6 @@ class GameJsonResolver:
             yield self.resolve(game)
 
 @click.command()
-@click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')
 @click.argument('jsons', nargs=-1, type=click.File('r'))
 @yields_outputs
 def load(output, jsons):

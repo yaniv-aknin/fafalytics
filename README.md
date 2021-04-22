@@ -47,4 +47,4 @@ $ fafalytics extract ../dumps/replays/*.fafreplay
 
 ## Thanks
 
-Based in part on work by [Askaholic](https://github.com/Askaholic) (and with special thanks for answering my questions), [norraxx](https://github.com/norraxx), [fafafaf](https://github.com/fafafaf), and others.
+Based in part on work by [Askaholic](https://github.com/Askaholic) (and with special thanks for answering my questions), [norraxx](https://github.com/norraxx), [spooky](https://github.com/spooky), and others.

@@ -69,13 +69,13 @@ class APM:
             })
         if self.actions_3m is not None:
             result.update({
-                'player1_mean_apm_first_3m': self.actions_3m[0] / 3,
-                'player2_mean_apm_first_3m': self.actions_3m[1] / 3,
+                'player1.mean_apm_first_3m': self.actions_3m[0] / 3,
+                'player2.mean_apm_first_3m': self.actions_3m[1] / 3,
             })
         if self.actions_5m is not None:
             result.update({
-                'player1_mean_apm_first_5m': self.actions_5m[0] / 5,
-                'player2_mean_apm_first_5m': self.actions_5m[1] / 5,
+                'player1.mean_apm_first_5m': self.actions_5m[0] / 5,
+                'player2.mean_apm_first_5m': self.actions_5m[1] / 5,
             })
         return result
 
@@ -99,14 +99,17 @@ def run_extractors(commands, *extractors):
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @yields_outputs
 def extract(ctx, skip_desynced, replays):
-    for replay in replays:
-        json_header, body = read_header_and_body(replay)
-        binary_header = body['header']
-        if skip_desynced and body['desync_ticks']:
-            continue
-        extracted = run_extractors(
-            yield_command_at_offsets(body['body']),
-            TimeToFirstFactory(),
-            APM(),
-        )
-        yield {'id': json_header['uid'], 'headers': {'json': json_header, 'binary': binary_header}, 'extracted': extracted}
+    with click.progressbar(replays, label='Extracting') as bar:
+        for replay in bar:
+            json_header, body = read_header_and_body(replay)
+            binary_header = body['header']
+            binary_header.pop('players')
+            binary_header['scenario']['Options'].pop('Ratings')
+            if skip_desynced and body['desync_ticks']:
+                continue
+            extracted = run_extractors(
+                yield_command_at_offsets(body['body']),
+                TimeToFirstFactory(),
+                APM(),
+            )
+            yield {'id': json_header['uid'], 'headers': {'json': json_header, 'binary': binary_header}, 'extracted': extracted}

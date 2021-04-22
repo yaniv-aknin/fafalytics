@@ -22,11 +22,12 @@ def output(func):
 @output
 def datastore(objects):
     client = get_client()
-    for obj in objects:
-        key = 'game.%s' % obj['id']
-        current = json.loads(client.get(key) or '{}')
-        current.update(obj)
-        client.set(key, json.dumps(current, default=lambda b: b.decode()))
+    with click.progressbar(objects, label="Outputting") as bar:
+        for obj in bar:
+            key = 'game.%s' % obj['id']
+            current = json.loads(client.get(key) or '{}')
+            current.update(obj)
+            client.set(key, json.dumps(current))
 
 @output
 def console(objects):

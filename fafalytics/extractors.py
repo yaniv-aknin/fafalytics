@@ -6,13 +6,12 @@ import click
 from .datastore import get_client
 from .parsing import read_header_and_body, yield_command_at_offsets
 from .output import yields_outputs, OUTPUT_CALLBACKS
+from .units import units
 
 class ExtractorDone(StopIteration):
     pass
 class TimeToFirstFactory:
-    T1_FACTORIES = {"uab0102", "uab0101", "uab0103", "urb0102", "urb0101",
-                    "urb0103", "ueb0102", "ueb0101", "ueb0103",
-                    "xsb0102", "xsb0101", "xsb0103"}
+    T1_FACTORIES = frozenset((unit.id for unit, score in units.search.categories("++FACTORY ++TECH1")))
     def __init__(self):
         self.first_factory = {}
     def feed(self, command):

@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import zlib
 
@@ -32,6 +33,19 @@ def read_header_and_body(filename: str, store_body: bool=True, parse_commands: I
     body = replay.parse(extracted, store_body=store_body, parse_commands=parse_commands)
     return header, body
 
-def read_headers(filename: str) -> (dict, dict):
-    header, body = read_header_and_body(filename, store_body=False, parse_commands=())
-    return header, body['header']
+def yield_command_at_offsets(body):
+    TICK_MILLISECONDS = 100
+    offset_ms = 0
+    for atom in body:
+        for player, commands in atom.items():
+            for command, args in commands.items():
+                if command == 'Advance':
+                    offset_ms += TICK_MILLISECONDS * args['advance']
+                elif command in ('VerifyChecksum', 'SetCommandSource'):
+                    continue
+                else:
+                    assert 'offset_ms' not in args
+                    assert 'player' not in args
+                    args['offset_ms'] = offset_ms
+                    args['player'] = player
+                    yield args

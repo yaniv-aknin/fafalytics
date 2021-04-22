@@ -52,7 +52,7 @@ def games(api_base, page_size, max_pages, start_date, duration_weeks, sleep_inte
     with click.progressbar(range(1, will_fetch+1), label='Fetching %d of %d pages' % (will_fetch, total_pages)) as bar:
         bar.next() # account for first page already fetched
         for page_number in bar:
-            if page_number > max_pages:
+            if max_pages and page_number > max_pages:
                 break
             time.sleep(sleep_interval)
             url = build_url(api_base, page_size, max_pages, page_number, start_date, duration_weeks)

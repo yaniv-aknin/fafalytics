@@ -4,11 +4,11 @@ import zlib
 
 from typing import Iterable
 
-import fafreplay
+from replay_parser import replay
 import zstd
 
+ALL_COMMANDS = tuple(range(24))
 FACTIONS = lambda x: {k:v for k,v in enumerate('uef aeon cybran seraphim nomads unknown'.split())}[x-1]
-ALL_COMMANDS = tuple(getattr(fafreplay.commands, c) for c in fafreplay.commands.__all__ if c != '__doc__')
 
 def extract_v1(buf):
     decoded = base64.decodebytes(buf)
@@ -18,7 +18,7 @@ def extract_v1(buf):
 def extract_v2(buf):
     return zstd.decompress(buf)
 
-def read_header_and_body(filename: str, save_commands: bool=True, commands: Iterable=ALL_COMMANDS):
+def read_header_and_body(filename: str, store_body: bool=True, parse_commands: Iterable=ALL_COMMANDS):
     with open(filename, 'rb') as handle:
         header = json.loads(handle.readline().decode())
         buf = handle.read()
@@ -29,10 +29,9 @@ def read_header_and_body(filename: str, save_commands: bool=True, commands: Iter
             extracted = extract_v2(buf)
         else:
             raise ValueError("unknown version %s" % version)
-    parser = fafreplay.Parser(save_commands=save_commands, commands=commands)
-    body = parser.parse(extracted)
+    body = replay.parse(extracted, store_body=store_body, parse_commands=parse_commands)
     return header, body
 
 def read_headers(filename: str) -> (dict, dict):
-    header, body = read_header_and_body(filename, save_commands=False, commands=[])
+    header, body = read_header_and_body(filename, store_body=False, parse_commands=())
     return header, body['header']

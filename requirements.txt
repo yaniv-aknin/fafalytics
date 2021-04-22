@@ -1,7 +1,7 @@
-faf-replay-parser
 click
 zstd
 redis
 requests
 urlobject
 pyarrow
+git+git://github.com/FAForever/faf-scfa-replay-parser@9d0cb7cb4bb0cf6d8be44e5c1ea4bc357aa9a0c5#egg=replay_parser

@@ -1,11 +1,13 @@
-import click
-import redis
-import subprocess
+from contextlib import suppress
+from os import path
 from subprocess import PIPE
 import os
-from os import path
 import signal
+import subprocess
 import time
+
+import click
+import redis
 
 from .pyutils import block_wait, negate
 
@@ -18,6 +20,13 @@ unixsocket %s
 unixsocketperm 755
 """ % SOCKPATH
 
+class DatastoreError(Exception):
+    pass
+class NotRunning(DatastoreError):
+    pass
+class UnexpectedRunning(DatastoreError):
+    pass
+
 def get_client():
     client = redis.Redis(unix_socket_path=SOCKPATH)
     client.ping()
@@ -26,22 +35,15 @@ def get_client():
 def read_pid() -> int:
     try:
         with open(PIDFILE) as handle:
-            pid = handle.read()
+            return int(handle.read())
     except FileNotFoundError:
-        return 0
-    return int(pid)
+        raise NotRunning("unable to read pidfile %s" % PIDFILE)
+    except ValueError:
+        raise NotRunning("invalid pidfile %s" % PIDFILE)
 
-def write_pid(pid: int):
+def write_pid(pid: int) -> None:
     with open(PIDFILE, 'w') as handle:
         handle.write(str(pid))
-
-def is_running() -> int:
-    pid = read_pid()
-    if not pid:
-        return pid
-    if path.exists('/proc/' + str(pid)):
-        return pid
-    return 0
 
 def is_alive() -> bool:
     try:
@@ -50,38 +52,60 @@ def is_alive() -> bool:
     except redis.exceptions.ConnectionError:
         return False
 
-@click.group()
-def datastore(): pass
+def is_running() -> bool:
+    try:
+        get_pid()
+        return True
+    except NotRunning:
+        return False
 
-@datastore.command()
-def start():
+def get_pid() -> int:
+    pid = read_pid()
+    if path.exists('/proc/' + str(pid)):
+        return pid
+    raise NotRunning("missing /proc/%d" % pid)
+
+def start_store():
     if not path.exists(TMPDIR):
         os.mkdir(TMPDIR)
-    pid = is_running()
-    if pid:
-        print('already running at pid %d' % pid)
-        return
+    with suppress(NotRunning):
+        pid = get_pid()
+        raise UnexpectedRunning('already running at pid %d' % pid)
     process = subprocess.Popen(['redis-server', '-'], stdin=PIPE, stdout=subprocess.DEVNULL)
     process.stdin.write(REDIS_CONF.encode())
     process.stdin.close()
     write_pid(process.pid)
-    block_wait(10, 0.1, predicate=is_alive)
+    block_wait(10, 0.1, predicate=is_alive, error=NotRunning('pid %d failed ping' % process.pid))
+
+def stop_store():
+    pid = get_pid()
+    os.kill(pid, signal.SIGTERM)
+    block_wait(10, 0.1, error=UnexpectedRunning('pid %d failed to exit' % pid), predicate=negate(is_running))
+
+@click.group()
+def datastore():
+    pass
+
+@datastore.command()
+def start():
+    "Starts the datastore and wait for it to ping healthy."
+    try:
+        start_store()
+    except (NotRunning, UnexpectedRunning) as error:
+        click.echo("start failed: %s" % error, err=True)
 
 @datastore.command()
 def stop():
-    pid = is_running()
-    if not pid:
-        print('not running')
-        return
-    os.kill(pid, signal.SIGTERM)
+    "SIGTERM the datastore and wait for it to exit."
     try:
-        block_wait(10, 0.1, predicate=negate(is_running))
-    except TimeoutError:
-        print('pid %d failed to exit' % pid)
+        stop_store()
+    except (NotRunning, UnexpectedRunning) as error:
+        click.echo('stop failed: %s' % error, err=True)
 
 @datastore.command()
 @click.pass_context
 def restart(ctx):
+    "Stop the datastore if running, then start it (flushing memory)."
     if is_running():
         ctx.invoke(stop)
     ctx.invoke(start)

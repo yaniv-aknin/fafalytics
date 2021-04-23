@@ -1,17 +1,17 @@
 import time
 from typing import Callable, Iterable
 
-def wait(iterations: int, interval: float, message: str='', predicate: Callable[[], bool]=lambda: False) -> Iterable[int]:
+def wait(iterations: int, interval: float, error: Exception=TimeoutError(), predicate: Callable[[], bool]=lambda: False) -> Iterable[int]:
     for iteration in range(iterations):
         time.sleep(interval)
         if predicate():
             break
         yield
     else:
-        raise TimeoutError(message)
+        raise error
 
-def block_wait(iterations: int, interval: float, message: str='', predicate: Callable[[], bool]=lambda: False) -> None:
-    for x in wait(iterations, interval, message, predicate):
+def block_wait(iterations: int, interval: float, error: Exception=TimeoutError(), predicate: Callable[[], bool]=lambda: False) -> None:
+    for x in wait(iterations, interval, error, predicate):
         pass
 
 def negate(f: Callable[[], bool]) -> bool:

@@ -4,7 +4,6 @@ import click
 
 from .datastore import get_client
 from .output import OUTPUT_CALLBACKS, yields_outputs
-from .pyutils import query_dict
 
 class GameJsonResolver:
     inline_relationships = (

@@ -16,15 +16,3 @@ def block_wait(iterations: int, interval: float, error: Exception=TimeoutError()
 
 def negate(f: Callable[[], bool]) -> bool:
     return lambda: not(f())
-
-def query_dict(d, query):
-    if isinstance(query, tuple):
-        query, postprocess = query
-    else:
-        postprocess = lambda x: x
-    components = query.split('/')
-    for component in components:
-        if component.isdigit():
-            component = int(component)
-        d = d[component]
-    return postprocess(d)

@@ -10,7 +10,7 @@ def yields_outputs(func):
     @functools.wraps(func)
     def wrapper(output, *args, **kwargs):
         objects = [obj for obj in func(output, *args, **kwargs)]
-        OUTPUT_CALLBACKS[output](objects)
+        OUTPUT_CALLBACKS[output](func.__name__, objects)
     return wrapper
 
 
@@ -20,17 +20,14 @@ def output(func):
     return func
 
 @output
-def datastore(objects):
+def datastore(prefix, objects):
     client = get_client()
     with click.progressbar(objects, label="Outputting") as bar:
         for obj in bar:
-            key = 'game.%s' % obj['id']
-            current = json.loads(client.get(key) or '{}')
-            current.update(obj)
-            client.set(key, json.dumps(current))
+            client.hsetnx(prefix, obj['id'], json.dumps(obj))
 
 @output
-def console(objects):
+def console(prefix, objects):
     try:
         import IPython
         IPython.embed()

@@ -16,3 +16,6 @@ def block_wait(iterations: int, interval: float, error: Exception=TimeoutError()
 
 def negate(f: Callable[[], bool]) -> bool:
     return lambda: not(f())
+
+def first(iterable):
+    return next(iter(iterable))

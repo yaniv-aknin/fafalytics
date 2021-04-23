@@ -94,16 +94,13 @@ def run_extractors(commands, *extractors):
         result.update(extractor.emit())
     return result
 
-class DesyncError(Exception):
-    pass
-
-def extract_replay(replay, raise_on_desync):
+def extract_replay(replay):
     json_header, body = read_header_and_body(replay)
     binary_header = body['header']
     binary_header.pop('players')
     binary_header['scenario']['Options'].pop('Ratings')
-    if raise_on_desync and body['desync_ticks']:
-        raise DesyncError()
+    binary_header['desync'] = {'count': len(body['desync_ticks']),
+                               'ticks': ','.join(str(t) for t in body['desync_ticks'])}
     extracted = run_extractors(
         yield_command_at_offsets(body['body']),
         TimeToFirstFactory(),
@@ -112,10 +109,9 @@ def extract_replay(replay, raise_on_desync):
     return {'id': json_header['uid'], 'headers': {'json': json_header, 'binary': binary_header}, 'extracted': extracted}
 
 @click.command()
-@click.option('--skip-desynced/--no-skip-desynced', default=True)
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @yields_outputs
-def extract(ctx, skip_desynced, replays):
+def extract(ctx, replays):
     with click.progressbar(replays, label='Extracting') as bar:
         for replay in bar:
-            yield extract_replay(replay, skip_desynced)
+            yield extract_replay(replay)

@@ -109,9 +109,18 @@ def extract_replay(replay):
     return {'id': json_header['uid'], 'headers': {'json': json_header, 'binary': binary_header}, 'extracted': extracted}
 
 @click.command()
+@click.option('--max-errors', type=int)
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @yields_outputs
-def extract(ctx, replays):
+def extract(ctx, max_errors, replays):
+    if max_errors is None:
+        max_errors = float('inf')
     with click.progressbar(replays, label='Extracting') as bar:
         for replay in bar:
-            yield extract_replay(replay)
+            try:
+                yield extract_replay(replay)
+            except Exception as error:
+                if max_errors == 0:
+                    raise
+                max_errors -= 1
+                continue

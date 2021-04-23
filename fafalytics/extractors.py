@@ -6,7 +6,7 @@ import click
 import pandas as pd
 
 from .storage import get_client
-from .parsing import read_header_and_body, yield_command_at_offsets
+from .parsing import get_parsed
 from .output import yields_outputs, OUTPUT_CALLBACKS
 from .units import units
 from .pyutils import Timer
@@ -100,19 +100,19 @@ def run_extractors(commands, *extractors):
         result.update(extractor.emit())
     return result
 
-def extract_replay(replay):
-    json_header, body = read_header_and_body(replay)
-    binary_header = body['header']
-    binary_header.pop('players')
-    binary_header.pop('scenario')
-    binary_header['desync'] = {'count': len(body['desync_ticks']),
-                               'ticks': ','.join(str(t) for t in body['desync_ticks'])}
+def extract_replay(filename):
+    replay = get_parsed(filename)
+    replay['binary'].pop('players')
+    replay['binary'].pop('scenario')
+    desyncs = replay['remaining']['desync_ticks']
+    replay['binary']['desync'] = {'count': len(desyncs),
+                                  'ticks': ','.join(str(t) for t in desyncs)}
     extracted = run_extractors(
-        yield_command_at_offsets(body['body']),
+        replay['commands'],
         TimeToFirstFactory(),
         APM(),
     )
-    return {'id': json_header['uid'], 'headers': {'json': json_header, 'binary': binary_header}, 'extracted': extracted}
+    return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}
 
 @click.command()
 @click.option('--max-errors', type=int)

@@ -1,4 +1,8 @@
 import logging
+import click
+import pandas as pd
+import pickle
+from os import path
 import base64
 import datetime
 import json
@@ -54,3 +58,43 @@ def yield_command_at_offsets(body):
                     args['offset_ms'] = offset_ms
                     args['player'] = player
                     yield args
+
+def get_parsed(filename):
+    with open(filename, 'rb') as handle:
+        raw = handle.read()
+    if filename.endswith('pickle'):
+        return pickle.loads(zstd.decompress(raw))
+    header, body = read_header_and_body(filename)
+    return {
+        'json': header,
+        'binary': body.pop('header'),
+        'commands': list(yield_command_at_offsets(body.pop('body'))),
+        'remaining': body,
+    }
+
+@click.command()
+@click.option('--max-errors', type=int)
+@click.argument('outdir', type=click.Path(exists=True, dir_okay=True, file_okay=False))
+@click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
+def unpack(max_errors, outdir, replays):
+    if max_errors is None:
+        max_errors = float('inf')
+    durations = []
+    with click.progressbar(replays, label='Unpacking') as bar:
+        for replay in bar:
+            try:
+                with Timer() as timer:
+                    json_header, body = read_header_and_body(replay)
+                    binary_header = body.pop('header')
+                    commands = list(yield_command_at_offsets(body.pop('body')))
+                    blob = pickle.dumps({'json': json_header, 'binary': binary_header, 'remaining': body, 'commands': commands})
+                    compressed = zstd.compress(blob)
+                    base, ext = path.splitext(path.basename(replay))
+                    with open(path.join(outdir, base+'.pickle'), 'wb') as handle:
+                        handle.write(compressed)
+                    durations.append(timer.elapsed)
+            except Exception as error:
+                logging.error('extract: replay %s raised %s:%s', replay, error.__class__.__name__, error)
+    stats = dict(pd.Series(durations).describe())
+    stats['sum'] = sum(durations)
+    logging.info('processed: %s', ','.join('%s=%.1f' % (k,v) for k,v in stats.items()))

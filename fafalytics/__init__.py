@@ -13,6 +13,7 @@ from .exports import export
 from .fetching import fetch
 from .pyutils import first
 from .logs import DatastoreHandler, handlers, setup, log
+from .parsing import unpack
 
 
 @click.group()
@@ -28,3 +29,4 @@ main.add_command(extract)
 main.add_command(export)
 main.add_command(fetch)
 main.add_command(log)
+main.add_command(unpack)

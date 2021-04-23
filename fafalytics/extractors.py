@@ -1,3 +1,4 @@
+import logging
 import functools
 import json
 
@@ -10,7 +11,10 @@ from .units import units
 
 class ExtractorDone(StopIteration):
     pass
-class TimeToFirstFactory:
+class Extractor:
+    def __str__(self):
+        return self.__class__.__name__
+class TimeToFirstFactory(Extractor):
     T1_FACTORIES = frozenset((unit.id for unit, score in units.search.categories("++FACTORY ++TECH1")))
     def __init__(self):
         self.first_factory = {}
@@ -30,7 +34,7 @@ class TimeToFirstFactory:
             'player2.first_factory_ms': self.first_factory.get(1, None),
         }
 
-class APM:
+class APM(Extractor):
     ACTIONS = frozenset(('issue', 'command_count_increase', 'command_count_decrease', 'factory_issue'))
     THREE_MINUTES_IN_MS = 3*60*1000
     FIVE_MINUTES_IN_MS = 5*60*1000
@@ -86,6 +90,7 @@ def run_extractors(commands, *extractors):
             try:
                 extractor.feed(command)
             except ExtractorDone:
+                logging.debug('extractor %s spent', extractor)
                 active_extractors.remove(extractor)
         if not active_extractors:
             break
@@ -117,10 +122,11 @@ def extract(ctx, max_errors, replays):
         max_errors = float('inf')
     with click.progressbar(replays, label='Extracting') as bar:
         for replay in bar:
+            logging.info('processing %s', replay)
             try:
                 yield extract_replay(replay)
             except Exception as error:
                 if max_errors == 0:
                     raise
                 max_errors -= 1
-                continue
+                logging.error('extract: replay %s raised %s:%s', replay, error.__class__.__name__, error)

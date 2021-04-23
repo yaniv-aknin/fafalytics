@@ -103,7 +103,7 @@ def extract_replay(replay):
     json_header, body = read_header_and_body(replay)
     binary_header = body['header']
     binary_header.pop('players')
-    binary_header['scenario']['Options'].pop('Ratings')
+    binary_header.pop('scenario')
     binary_header['desync'] = {'count': len(body['desync_ticks']),
                                'ticks': ','.join(str(t) for t in body['desync_ticks'])}
     extracted = run_extractors(

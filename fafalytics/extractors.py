@@ -3,11 +3,13 @@ import functools
 import json
 
 import click
+import pandas as pd
 
 from .storage import get_client
 from .parsing import read_header_and_body, yield_command_at_offsets
 from .output import yields_outputs, OUTPUT_CALLBACKS
 from .units import units
+from .pyutils import Timer
 
 class ExtractorDone(StopIteration):
     pass
@@ -90,7 +92,6 @@ def run_extractors(commands, *extractors):
             try:
                 extractor.feed(command)
             except ExtractorDone:
-                logging.debug('extractor %s spent', extractor)
                 active_extractors.remove(extractor)
         if not active_extractors:
             break
@@ -120,13 +121,20 @@ def extract_replay(replay):
 def extract(ctx, max_errors, replays):
     if max_errors is None:
         max_errors = float('inf')
+    durations = []
     with click.progressbar(replays, label='Extracting') as bar:
         for replay in bar:
-            logging.info('processing %s', replay)
             try:
-                yield extract_replay(replay)
+                logging.debug('processing %s', replay)
+                with Timer() as timer:
+                    yield extract_replay(replay)
+                durations.append(timer.elapsed)
+                logging.debug('processed %s in %.2f seconds', replay, timer.elapsed)
             except Exception as error:
                 if max_errors == 0:
                     raise
                 max_errors -= 1
                 logging.error('extract: replay %s raised %s:%s', replay, error.__class__.__name__, error)
+    stats = dict(pd.Series(durations).describe())
+    stats['sum'] = sum(durations)
+    logging.info('processed: %s', ','.join('%s=%.1f' % (k,v) for k,v in stats.items()))

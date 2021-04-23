@@ -1,3 +1,4 @@
+import logging
 import base64
 import datetime
 import json
@@ -7,6 +8,8 @@ from typing import Iterable
 
 from replay_parser import replay
 import zstd
+
+from .pyutils import Timer
 
 ALL_COMMANDS = tuple(range(24))
 FACTIONS = lambda x: {k:v for k,v in enumerate('uef aeon cybran seraphim nomads unknown'.split())}[x-1]
@@ -30,7 +33,9 @@ def read_header_and_body(filename: str, store_body: bool=True, parse_commands: I
             extracted = extract_v2(buf)
         else:
             raise ValueError("unknown version %s" % version)
-    body = replay.parse(extracted, store_body=store_body, parse_commands=parse_commands)
+    with Timer() as timer:
+        body = replay.parse(extracted, store_body=store_body, parse_commands=parse_commands)
+        logging.debug('parsed in %.2f seconds', timer.elapsed)
     return header, body
 
 def yield_command_at_offsets(body):

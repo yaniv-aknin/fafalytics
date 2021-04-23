@@ -1,4 +1,5 @@
 import time
+import contextlib
 from typing import Callable, Iterable
 
 def wait(iterations: int, interval: float, error: Exception=TimeoutError(), predicate: Callable[[], bool]=lambda: False) -> Iterable[int]:
@@ -19,3 +20,22 @@ def negate(f: Callable[[], bool]) -> bool:
 
 def first(iterable):
     return next(iter(iterable))
+
+class Timer:
+    def __init__(self):
+        self.start = None
+        self.end = None
+    def __enter__(self):
+        self.start = time.time()
+        return self
+    def __exit__(self, *exc):
+        self.end = time.time()
+    @property
+    def running(self):
+        return self.start and not self.end
+    @property
+    def elapsed(self):
+        if not self.start:
+            raise ValueError('not started')
+        end = self.end or time.time()
+        return end-self.start

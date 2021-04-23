@@ -3,7 +3,7 @@ import json
 
 import click
 
-from .datastore import get_client
+from .storage import get_client
 from .parsing import read_header_and_body, yield_command_at_offsets
 from .output import yields_outputs, OUTPUT_CALLBACKS
 from .units import units

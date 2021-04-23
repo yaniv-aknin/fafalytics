@@ -2,7 +2,7 @@ import json
 
 import click
 
-from .datastore import get_client
+from .storage import get_client
 from .output import OUTPUT_CALLBACKS, yields_outputs
 
 class GameJsonResolver:

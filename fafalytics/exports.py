@@ -3,7 +3,7 @@ import json
 import click
 import pandas as pd
 
-from .datastore import get_client
+from .storage import get_client
 
 @click.command()
 @click.option('--format', type=click.Choice(['parquet', 'csv']))

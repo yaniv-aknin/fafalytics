@@ -3,7 +3,7 @@ import json
 
 import click
 
-from .datastore import get_client
+from .storage import get_client
 
 def yields_outputs(func):
     @click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')

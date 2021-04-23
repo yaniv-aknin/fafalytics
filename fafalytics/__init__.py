@@ -2,7 +2,7 @@
 
 import click
 
-from .datastore import datastore
+from .storage import datastore
 from .extractors import extract
 from .loader import load
 from .exports import export

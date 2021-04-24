@@ -102,6 +102,7 @@ def run_extractors(commands, *extractors):
 
 def extract_replay(filename):
     replay = get_parsed(filename)
+    replay['binary']['last_tick'] = replay['remaining']['last_tick']
     replay['binary'].pop('players')
     replay['binary'].pop('scenario')
     desyncs = replay['remaining']['desync_ticks']

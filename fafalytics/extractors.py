@@ -3,13 +3,12 @@ import functools
 import json
 
 import click
-import pandas as pd
 
 from .storage import get_client
 from .parsing import get_parsed
 from .output import yields_outputs, OUTPUT_CALLBACKS
 from .units import units
-from .pyutils import Timer
+from .manyfiles import file_processor, yield_processed_files
 
 class ExtractorDone(StopIteration):
     pass
@@ -116,27 +115,9 @@ def extract_replay(filename):
     return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}
 
 @click.command()
-@click.option('--max-errors', type=int)
-@click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
+@file_processor
 @yields_outputs
-def extract(ctx, max_errors, replays):
+def extract(ctx, max_errors, infiles):
     "Read replay file and populate the datastore with features extracted from it."
-    if max_errors is None:
-        max_errors = float('inf')
-    durations = []
-    with click.progressbar(replays, label='Extracting') as bar:
-        for replay in bar:
-            try:
-                logging.debug('processing %s', replay)
-                with Timer() as timer:
-                    yield extract_replay(replay)
-                durations.append(timer.elapsed)
-                logging.debug('processed %s in %.2f seconds', replay, timer.elapsed)
-            except Exception as error:
-                if max_errors == 0:
-                    raise
-                max_errors -= 1
-                logging.error('extract: replay %s raised %s:%s', replay, error.__class__.__name__, error)
-    stats = dict(pd.Series(durations).describe())
-    stats['sum'] = sum(durations)
-    logging.info('processed: %s', ','.join('%s=%.1f' % (k,v) for k,v in stats.items()))
+    with click.progressbar(infiles, label='Extracting') as bar:
+        yield from yield_processed_files(bar, extract_replay, max_errors)

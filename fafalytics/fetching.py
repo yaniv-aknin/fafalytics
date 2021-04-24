@@ -1,4 +1,5 @@
 from os import path
+import os
 import time
 import json
 import datetime
@@ -6,6 +7,8 @@ import urlobject
 
 import requests
 import click
+
+from .storage import get_client
 
 API_BASE = urlobject.URLObject('https://api.faforever.com')
 
@@ -61,5 +64,19 @@ def games(api_base, page_size, max_pages, start_date, duration_weeks, sleep_inte
             write_response(output_directory, page_number, requests.get(url).json())
 
 @fetch.command()
-def replays():
-    raise NotImplementedError()
+@click.option('--symlink-directory', type=click.Path())
+@click.argument('output_directory', type=click.Path())
+def replay_urls(symlink_directory, output_directory):
+    client = get_client()
+    for game_id, json_blob in client.hgetall('load').items():
+        obj = json.loads(json_blob)
+        url = urlobject.URLObject(obj['replayUrl'])
+        basename = url.path.segments[-1]
+        output_path = path.join(output_directory, basename)
+        if not path.exists(output_path):
+            print(url)
+        if not symlink_directory:
+            continue
+        symlink_path = path.join(symlink_directory, basename)
+        if not path.exists(symlink_path):
+            os.symlink(output_path, symlink_path)

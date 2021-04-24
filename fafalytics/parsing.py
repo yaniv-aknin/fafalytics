@@ -42,22 +42,25 @@ def read_header_and_body(filename: str, store_body: bool=True, parse_commands: I
         logging.debug('parsed in %.2f seconds', timer.elapsed)
     return header, body
 
-def yield_command_at_offsets(body):
+def get_command_timeseries(body):
+    "Given an iterable of raw replay commands, return higher level timestamped stream."
     TICK_MILLISECONDS = 100
     offset_ms = 0
+    result = []
     for atom in body:
         for player, commands in atom.items():
             for command, args in commands.items():
                 if command == 'Advance':
                     offset_ms += TICK_MILLISECONDS * args['advance']
-                elif command in ('VerifyChecksum', 'SetCommandSource'):
                     continue
-                else:
-                    assert 'offset_ms' not in args
-                    assert 'player' not in args
-                    args['offset_ms'] = offset_ms
-                    args['player'] = player
-                    yield args
+                if command in ('VerifyChecksum', 'SetCommandSource'):
+                    continue
+                assert 'offset_ms' not in args
+                assert 'player' not in args
+                args['offset_ms'] = offset_ms
+                args['player'] = player
+                result.append(args)
+    return result
 
 def get_parsed(filename):
     with open(filename, 'rb') as handle:
@@ -68,14 +71,14 @@ def get_parsed(filename):
     return {
         'json': header,
         'binary': body.pop('header'),
-        'commands': list(yield_command_at_offsets(body.pop('body'))),
+        'commands': get_command_timeseries(body.pop('body')),
         'remaining': body,
     }
 
 def unpack_replay(outdir, replay):
     json_header, body = read_header_and_body(replay)
     binary_header = body.pop('header')
-    commands = list(yield_command_at_offsets(body.pop('body')))
+    commands = get_command_timeseries(body.pop('body'))
     blob = pickle.dumps({'json': json_header, 'binary': binary_header, 'remaining': body, 'commands': commands})
     compressed = zstd.compress(blob)
     base, ext = path.splitext(path.basename(replay))

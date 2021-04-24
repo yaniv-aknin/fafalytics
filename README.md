@@ -1,10 +1,11 @@
 # fafalytics
 
-Tools to analyse [FAF](http://faforever.com) games.
+Suite of CLI tools to help analyse [FAF](http://faforever.com) games.
 
 ## Overview
 
-fafalytics is meant to help create pipelines of the following structure:
+This package has a single multi-command executable called `fafalytics`. It's
+meant to help aspiring game analysts follow this process:
 
 ![Alt text](https://g.gravizo.com/source/overview?https%3A%2F%2Fraw.githubusercontent.com%2Fyaniv-aknin%2Ffafalytics%2Fmaster%2FREADME.md)
 
@@ -12,37 +13,60 @@ fafalytics is meant to help create pipelines of the following structure:
 <summary></summary>
 overview
   digraph G {
-    fetch_json -> load_metadata
-    fetch_replay -> feature_extraction
-    feature_extraction -> feature_engineering
-    load_metadata -> feature_engineering
-    feature_engineering -> export_store
-    export_store -> model_training
-    export_store -> visualize
-    export_store -> load_bigquery
+    "datastore start" -> "fetch games"
+    "datastore start" -> "fetch replay-urls"
+    "fetch games" -> "load"
+    "fetch replay-urls" -> unpack
+    "fetch replay-urls" -> extract
+    unpack -> extract
+    extract -> export
+    load -> export
+    export -> colab
+    export -> bigquery
+    colab, bigquery [shape=box]
+    log
   }
 overview
 </details>
 
-And verbally...:
- * Get JSON dumps of [Game](https://github.com/FAForever/faf-java-api/blob/28128cca6def4fd4e6fb4fae77cea79d6b1ff926/src/main/java/com/faforever/api/data/domain/Game.java#L38) models from api.faforever.com
- * Get replay files from content.faforever.com
- * Load the metadata from JSON into a nosql datastore (currently Redis)
- * Extract features from replay files into the nosql datastore
- * Calculate new features within the datastore (e.g., `duration = end_time - start_time`)
- * Export store into CSV/Parquet
- * Use the exported data in Pandas etc to train models, directly visualize results, or load into BigQuery (for use with Datastudio etc)
+Each of these is a `fafalytics` subcommand, other than [Colab][] and
+[BigQuery][] which are external tools. Obviously you don't *have* to use these,
+after the `export` step do whatever you want with the data.
 
-This is the plan anyway. :) Initially, most of the work will be around the `feature_extraction` phase, using semi-manually fetched JSONs/Replays.
+[Colab]: https://colab.research.google.com
+[BigQuery]: https://cloud.google.com/bigquery
+
+You can learn more about each of these commands using the `--help` argument, but
+basically the logical flow is something like...:
+ * Start the fafalytics document store (currently Redis)
+ * Get JSON dumps of [Game models][] models from api.faforever.com
+ * Load the metadata from the JSON dumps into the datastore
+ * Get a list of replay-urls and download them somehow (e.g. `| xargs wget`)
+ * Optionally unpack the replays
+   Pre-unpacking the replays makes them ~10x faster to read on subsequent
+   reads, which is probably useful if you're hacking on the code
+ * Extract features from (possibly unpacked) replay files into the datastore
+ * Export store into CSV/Parquet
+ * Use the exported data in BigQuery/Pandas/etc
+
+[Game models]: https://github.com/FAForever/faf-java-api/blob/28128cca6def4fd4e6fb4fae77cea79d6b1ff926/src/main/java/com/faforever/api/data/domain/Game.java#L38
+
+One last command that merits some discussion is `fafalytics log`. Since this is
+a multi-tool sometimes used as a short-lived CLI program and sometimes in a
+multiprocessing pipeline-like environment, I built a lightweight logging
+mechanism that logs output to the datastore. The `log` command prints whats in
+the datastore log, which can come in handy when running 100 `fafalytics`
+instances in parallel to extract 500K games over an hour or so.
 
 ## Usage
 
-WARNING: This section describes features that don't exist yet, consider it documentation driven development.
-
 ```
 $ fafalytics datastore start
-$ fafalytics load dump1.json dump2.json
-$ fafalytics extract ../dumps/replays/*.fafreplay
+$ fafalytics fetch games /tmp/fafalytics
+$ fafalytics load /tmp/fafalytics/*.json
+$ fafalytics fetch replay-urls /tmp/fafalytics | xargs wget
+$ fafalytics extract /tmp/fafalytics/*.fafreplay
+$ fafalytics export curated /tmp/fafalytics/result.parquet
 ```
 
 ## Thanks

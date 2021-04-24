@@ -84,11 +84,11 @@ def stop_store():
 
 @click.group()
 def datastore():
-    pass
+    "Datastore management commands"
 
 @datastore.command()
 def start():
-    "Starts the datastore and wait for it to ping healthy."
+    "Starts the datastore and wait for it to ping healthy"
     try:
         start_store()
     except (NotRunning, UnexpectedRunning) as error:
@@ -96,7 +96,7 @@ def start():
 
 @datastore.command()
 def stop():
-    "SIGTERM the datastore and wait for it to exit."
+    "SIGTERM the datastore and wait for it to exit"
     try:
         stop_store()
     except (NotRunning, UnexpectedRunning) as error:
@@ -105,7 +105,7 @@ def stop():
 @datastore.command()
 @click.pass_context
 def restart(ctx):
-    "Stop the datastore if running, then start it (flushing memory)."
+    "Stop the datastore if running, then start it (flushing memory)"
     if is_running():
         ctx.invoke(stop)
     ctx.invoke(start)

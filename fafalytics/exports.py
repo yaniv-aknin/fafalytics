@@ -28,7 +28,7 @@ def to_format(df, filename, format=None):
 
 @click.group()
 def export():
-    pass
+    "Dump datastore into a CSV/Parquet file"
 
 def export_decorator(func):
     return (
@@ -40,6 +40,7 @@ def export_decorator(func):
 @export.command()
 @export_decorator
 def flattened(format, output):
+    "Dump everything in the datastore using flattened JSONs (not recommended, messy)"
     objects = get_all_objects()
     df = pd.json_normalize(objects.values()).set_index('id')
     to_format(df, output, format)
@@ -47,6 +48,7 @@ def flattened(format, output):
 @export.command()
 @export_decorator
 def curated(format, output):
+    "Dump specific fields from the datastore to a nice CSV/Parquet file (recommended)"
     objects = get_all_objects()
     results = []
     for obj in objects.values():

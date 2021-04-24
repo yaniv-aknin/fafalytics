@@ -70,6 +70,7 @@ def echo_log_messages(messages):
 
 @click.command()
 def log():
+    "Print the log stored in the datastore"
     response = get_client().xread({LOG_STREAM_KEY: 0})
     if not response:
         return

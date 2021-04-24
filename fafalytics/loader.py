@@ -59,5 +59,6 @@ class GameJsonResolver:
 @click.argument('jsons', nargs=-1, type=click.File('r'))
 @yields_outputs
 def load(output, jsons):
+    "Load Game model JSONs into datastore"
     for json in jsons:
         yield from GameJsonResolver.from_handle(json)

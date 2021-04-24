@@ -120,6 +120,7 @@ def extract_replay(filename):
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 @yields_outputs
 def extract(ctx, max_errors, replays):
+    "Read replay file and populate the datastore with features extracted from it."
     if max_errors is None:
         max_errors = float('inf')
     durations = []

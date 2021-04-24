@@ -77,6 +77,7 @@ def get_parsed(filename):
 @click.argument('outdir', type=click.Path(exists=True, dir_okay=True, file_okay=False))
 @click.argument('replays', nargs=-1, type=click.Path(exists=True, dir_okay=False))
 def unpack(max_errors, outdir, replays):
+    "Unpack and pre-parse replay files, making them much faster to read on subsequent reads."
     if max_errors is None:
         max_errors = float('inf')
     durations = []

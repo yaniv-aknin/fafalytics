@@ -34,7 +34,8 @@ def write_response(directory, index, obj):
         json.dump(obj, handle, indent=4)
 
 @click.group()
-def fetch(): pass
+def fetch():
+    "Fetching game data from faforever.com"
 
 @fetch.command()
 @click.option('--api-base', type=urlobject.URLObject, default=API_BASE)
@@ -46,6 +47,7 @@ def fetch(): pass
 @click.option('--dry-run/--no-dry-run', default=False)
 @click.argument('output_directory', type=click.Path())
 def games(api_base, page_size, max_pages, start_date, duration_weeks, sleep_interval, dry_run, output_directory):
+    "Get JSON dumps of Game model objects from api.faforever.com"
     first_url = build_url(api_base, page_size, max_pages, 1, start_date, duration_weeks)
     print('Fetching 1st page...')
     first_response = requests.get(first_url).json()
@@ -67,6 +69,7 @@ def games(api_base, page_size, max_pages, start_date, duration_weeks, sleep_inte
 @click.option('--symlink-directory', type=click.Path())
 @click.argument('output_directory', type=click.Path())
 def replay_urls(symlink_directory, output_directory):
+    "Print list of replay URLs known in the datastore but not in output_directory"
     client = get_client()
     for game_id, json_blob in client.hgetall('load').items():
         obj = json.loads(json_blob)

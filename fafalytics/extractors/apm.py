@@ -25,26 +25,26 @@ class APM(Extractor):
             self.actions_5m = dict(self.actions)
     def emit(self):
         result = {
-            'player1.mean_apm': None,
-            'player2.mean_apm': None,
-            'player1.mean_apm_first_3m': None,
-            'player2.mean_apm_first_3m': None,
-            'player1.mean_apm_first_5m': None,
-            'player2.mean_apm_first_5m': None,
+            'player1.mean_apm.overall': None,
+            'player2.mean_apm.overall': None,
+            'player1.mean_apm.first_3m': None,
+            'player2.mean_apm.first_3m': None,
+            'player1.mean_apm.first_5m': None,
+            'player2.mean_apm.first_5m': None,
         }
         if self.last_offset is not None:
             result.update({
-                'player1.mean_apm': self.actions[0] / self.last_offset_in_minutes,
-                'player2.mean_apm': self.actions[1] / self.last_offset_in_minutes,
+                'player1.mean_apm.overall': self.actions[0] / self.last_offset_in_minutes,
+                'player2.mean_apm.overall': self.actions[1] / self.last_offset_in_minutes,
             })
         if self.actions_3m is not None:
             result.update({
-                'player1.mean_apm_first_3m': self.actions_3m[0] / 3,
-                'player2.mean_apm_first_3m': self.actions_3m[1] / 3,
+                'player1.mean_apm.first_3m': self.actions_3m[0] / 3,
+                'player2.mean_apm.first_3m': self.actions_3m[1] / 3,
             })
         if self.actions_5m is not None:
             result.update({
-                'player1.mean_apm_first_5m': self.actions_5m[0] / 5,
-                'player2.mean_apm_first_5m': self.actions_5m[1] / 5,
+                'player1.mean_apm.first_5m': self.actions_5m[0] / 5,
+                'player2.mean_apm.first_5m': self.actions_5m[1] / 5,
             })
         return result

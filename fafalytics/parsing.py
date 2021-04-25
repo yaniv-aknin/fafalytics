@@ -9,13 +9,20 @@ import zlib
 from typing import Iterable
 
 import click
-from replay_parser import replay as replay_parser
+import replay_parser.replay
+import replay_parser.constants
 import zstd
 
 from .pyutils import Timer
 from .manyfiles import file_processor, process_all_files
 
 ALL_COMMANDS = tuple(range(24))
+
+ISSUE_TYPE_ID_TO_NAME = {
+    identifier: name for name, identifier in
+    replay_parser.constants.ActionType.__dict__.items() if not name.startswith('_')
+}
+ISSUE_TYPE_ID_TO_NAME[-1] = 'OTHER' # special value used when aggregating several command types
 
 # See Zulip discussion on the faction order, mapping factions isn't trivial:
 #  https://faforever.zulipchat.com/#narrow/stream/203478-general/topic/Faction.20Order/near/235006069
@@ -47,7 +54,7 @@ def read_header_and_body(filename: str, store_body: bool=True, parse_commands: I
         else:
             raise ValueError("unknown version %s" % version)
     with Timer() as timer:
-        body = replay_parser.parse(extracted, store_body=store_body, parse_commands=parse_commands)
+        body = replay_parser.replay.parse(extracted, store_body=store_body, parse_commands=parse_commands)
         logging.debug('parsed in %.2f seconds', timer.elapsed)
     return header, body
 

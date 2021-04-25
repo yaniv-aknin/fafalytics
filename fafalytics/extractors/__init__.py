@@ -7,6 +7,7 @@ from ..logs import log_invocation
 
 from .apm import APM
 from .first import TimeToFirst
+from .commandmix import CommandMix
 
 def run_extractors(commands, *extractors):
     for command in commands:
@@ -29,6 +30,7 @@ def extract_replay(filename):
         replay['commands'],
         TimeToFirst(),
         APM(),
+        CommandMix(),
     )
     return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}
 

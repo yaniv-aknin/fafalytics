@@ -10,5 +10,5 @@ function newfafa {
     fafalytics export /tmp/test.parquet curated
 }
 function pqfafa {
-    ipython -c 'import pandas as pd ; df=pd.read_parquet("/tmp/test.parquet")' -i
+    fafalytics interactive dataframe /tmp/test.parquet
 }

@@ -4,6 +4,7 @@ import json
 import click
 
 from .storage import get_client
+from .pyutils import shell as python_shell
 
 def yields_outputs(func):
     @click.option('--output', type=click.Choice(tuple(OUTPUT_CALLBACKS)), default='datastore')
@@ -28,9 +29,4 @@ def datastore(prefix, objects):
 
 @output
 def console(prefix, objects):
-    try:
-        import IPython
-        IPython.embed()
-    except ImportError:
-        import code
-        code.interact(local=locals())
+    python_shell({'objects': objects})

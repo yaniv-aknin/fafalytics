@@ -14,6 +14,7 @@ from .fetching import fetch
 from .pyutils import first
 from .logs import DatastoreHandler, handlers, setup, log
 from .parsing import unpack
+from .interact import interactive
 
 
 @click.group(context_settings={'auto_envvar_prefix': 'FAFAL'})
@@ -29,3 +30,4 @@ main.add_command(export)
 main.add_command(fetch)
 main.add_command(log)
 main.add_command(unpack)
+main.add_command(interactive)

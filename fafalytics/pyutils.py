@@ -94,3 +94,11 @@ def restructure_dict(src, queries):
             dst_obj = dst_obj.setdefault(component, {})
         dst_obj[key] = query(src)
     return dst
+
+def shell(ns={}):
+    try:
+        import IPython
+        IPython.start_ipython(user_ns=ns, display_banner=False, argv=[])
+    except ImportError:
+        import code
+        code.interact(local=ns)

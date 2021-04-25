@@ -1,4 +1,4 @@
-from fafalytics.pyutils import negate, Query, restructure_dict
+from fafalytics.pyutils import negate, Query, restructure_dict, Literal
 from unittest import TestCase
 
 def test_negate():
@@ -12,6 +12,7 @@ def test_query():
     assert Query('foo')({'foo': 1}) == 1
     assert Query('foo/bar')({'foo': {'bar': 1}}) == 1
     assert Query('foo/bar', missing=missing)({'foo': {}}) == 5
+    assert Query(Literal(None))({}) is None
     with TestCase().assertRaises(RuntimeError):
         Query('foo', reraise=RuntimeError)({})
 

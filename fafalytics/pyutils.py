@@ -53,6 +53,15 @@ class EchoTimer(Timer):
         if not any(exc):
             click.echo('(%.2fs)' % self.elapsed)
 
+def null(obj, component):
+    "A Query `missing` function that always returns None"
+    return None
+
+class Literal:
+    "Makes restructure_dict return a specific value (without dict lookup)"
+    def __init__(self, value):
+        self.value = value
+
 class Query:
     def __init__(self, path, missing=None, cast=None, reraise=KeyError):
         self.path = path
@@ -60,6 +69,8 @@ class Query:
         self.cast = cast
         self.reraise = reraise
     def __call__(self, obj):
+        if isinstance(self.path, Literal):
+            return self.path.value
         for component in self.path.split('/'):
             try:
                 obj = obj[component]

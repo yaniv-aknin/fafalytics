@@ -16,13 +16,16 @@ from .pyutils import Timer
 from .manyfiles import file_processor, process_all_files
 
 ALL_COMMANDS = tuple(range(24))
+
 # See Zulip discussion on the faction order, mapping factions isn't trivial:
 #  https://faforever.zulipchat.com/#narrow/stream/203478-general/topic/Faction.20Order/near/235006069
 # I went with Sheikah's approach:
 #  > You can continue this discussion but for the client I will just use the
 #  > four basic ones and everything else will be considered random as that is
 #  > the only consistent thing
-FACTIONS = {k:v for k,v in enumerate(('uef', 'aeon', 'cybran', 'seraphim'), 1)}
+FACTION_LOOKUP = {1: 'uef', 2: 'aeon', 3: 'cybran', 4: 'seraphim'}
+def map_faction(faction_id):
+    return FACTION_LOOKUP.get(faction_id, 'UNDEFINED')
 
 def extract_v1(buf):
     decoded = base64.decodebytes(buf)

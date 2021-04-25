@@ -13,6 +13,12 @@ def parse_iso8601(datestr):
     assert datestr[-1] == 'Z'
     return datetime.fromisoformat(datestr[:-1])
 
+def int_or_none(obj):
+    try:
+        return int(obj)
+    except (TypeError, ValueError):
+        return None
+
 def get_valid_objects_keys(client):
     load_keys = set(client.hkeys('load'))
     extract_keys = set(client.hkeys('extract'))
@@ -54,6 +60,8 @@ def build_curated_dict(obj):
     human_armies = {k: v for k, v in obj['extract']['headers']['binary']['armies'].items() if v['Human']}
     if len(human_armies) != 2:
         raise InvalidObject("%d human armies (expected 2)" % len(human_armies))
+    if 'mapVersion' not in obj['load']:
+        raise InvalidObject("unknown map")
     result = {
         'id': obj['id'].decode(),
         'meta': {
@@ -69,27 +77,35 @@ def build_curated_dict(obj):
         'durations': {
             'database.start': parse_iso8601(obj['load']['endTime']),
             'database.end': parse_iso8601(obj['load']['startTime']),
-            'header.start': datetime.fromtimestamp(obj['extract']['headers']['json']['launched_at']),
-            'header.end': datetime.fromtimestamp(obj['extract']['headers']['json']['game_end']),
+            'header.start': None,
+            'header.end': None,
             'ticks': obj['extract']['headers']['binary']['last_tick'],
         },
         'features': obj['extract']['extracted'],
         'players': {},
         'armies': {},
     }
+    if 'launched_at' in obj['extract']['headers']['json'] and 'game_end' in obj['extract']['headers']['json']:
+        result['durations']['header.start'] = datetime.fromtimestamp(obj['extract']['headers']['json']['launched_at'])
+        result['durations']['header.end'] = datetime.fromtimestamp(obj['extract']['headers']['json']['game_end'])
     all_stats = obj['load']['playerStats'].values()
     stats_by_owner_id = {stats['player']['id']: stats for stats in all_stats}
     for player_index in (0, 1):
         key = 'player%d' % (player_index + 1)
         army = human_armies[str(player_index)]
-        stats = stats_by_owner_id[army['OwnerID']]
+        try:
+            stats = stats_by_owner_id[army['OwnerID']]
+        except KeyError:
+            raise InvalidObject(
+                'army with owner %s has no stats (found %s)' % (army['OwnerID'], ','.join(str(k for k in stats_by_owner_id))))
         login = stats['player']['login']
         rating_matched = True
-        if abs(army['MEAN'] - stats['beforeMean']) < 1:
+        if 'MEAN' in army and abs(army['MEAN'] - stats['beforeMean']) < 1:
             logging.debug('game %s has db vs replay beforeMean mismatch - db=%s, game=%s',
                           obj['id'], stats['beforeMean'], army['MEAN'])
             rating_matched = False
-        assert army['Faction'] == stats['faction']
+        if army['Faction'] != stats['faction']:
+            raise InvalidObject("replay/db disagree on %s faction (%s vs %s)" % (login, army['Faction'], stats['faction']))
         result['players'][key] = {
             'id': stats['player']['id'],
             'login': stats['player']['login'],
@@ -99,8 +115,8 @@ def build_curated_dict(obj):
             'trueskill_mean_after': stats['afterMean'],
             'trueskill_deviation_after': stats['afterDeviation'],
             'trueskill_db_matches_game': rating_matched,
-            'army_num_games': int(army['NG']),
-            'army_faf_rating': int(army['PL']),
+            'army_num_games': int_or_none(army.get('NG')),
+            'army_faf_rating': int_or_none(army.get('PL')),
         }
         result['armies'][key] = {
             'name': army['PlayerName'],

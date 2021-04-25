@@ -1,12 +1,14 @@
 import logging
 import json
 from datetime import datetime
+from codecs import decode
+from functools import partial
 
 import click
 import pandas as pd
 
 from .storage import get_client
-from .pyutils import EchoTimer
+from .pyutils import EchoTimer, Query, restructure_dict, Literal
 from .parsing import FACTIONS
 from .logs import log_invocation
 
@@ -58,38 +60,41 @@ def export_decorator(func):
 
 class InvalidObject(ValueError):
     pass
+Q = partial(Query, reraise=InvalidObject)
+def null(obj, component):
+    return None
+BASE_STRUCTURE = {
+    'id':                         Q('id', cast=decode),
+    'meta/title':                 Q('extract/headers/json/title'),
+    'meta/replay':                Q('load/replayUrl'),
+    'map/name':                   Q('load/mapVersion/map/displayName'),
+    'map/version':                Q('load/mapVersion/id'),
+    'map/width':                  Q('load/mapVersion/width'),
+    'map/height':                 Q('load/mapVersion/height'),
+    'durations/database.start':   Q('load/endTime', cast=parse_iso8601),
+    'durations/database.end':     Q('load/endTime', cast=parse_iso8601),
+    'durations/header.start':     Q('extract/headers/json/launched_at', cast=datetime.fromtimestamp, missing=null),
+    'durations/header.end':       Q('extract/headers/json/game_end', cast=datetime.fromtimestamp, missing=null),
+    'durations/ticks':            Q('extract/headers/binary/last_tick'),
+    'features':                   Q('extract/extracted'),
+    'players':                    Q(Literal({})),
+    'armies':                     Q(Literal({})),
+}
+PLAYER_STRUCTURE = {
+    'id':                         Q('player/id'),
+    'login':                      Q('player/login'),
+    'playing_since':              Q('player/createTime', cast=parse_iso8601),
+    'trueskill_mean_before':      Q('beforeMean'),
+    'trueskill_deviation_before': Q('beforeDeviation'),
+    'trueskill_mean_after':       Q('afterMean'),
+    'trueskill_deviation_after':  Q('afterDeviation'),
+}
+
 def build_curated_dict(obj):
     human_armies = {k: v for k, v in obj['extract']['headers']['binary']['armies'].items() if v['Human']}
     if len(human_armies) != 2:
         raise InvalidObject("%d human armies (expected 2)" % len(human_armies))
-    if 'mapVersion' not in obj['load']:
-        raise InvalidObject("unknown map")
-    result = {
-        'id': obj['id'].decode(),
-        'meta': {
-            'title': obj['extract']['headers']['json']['title'],
-            'replay': obj['load']['replayUrl'],
-        },
-        'map': {
-            'name': obj['load']['mapVersion']['map']['displayName'],
-            'version': obj['load']['mapVersion']['id'],
-            'width': obj['load']['mapVersion']['width'],
-            'height': obj['load']['mapVersion']['height'],
-        },
-        'durations': {
-            'database.start': parse_iso8601(obj['load']['endTime']),
-            'database.end': parse_iso8601(obj['load']['startTime']),
-            'header.start': None,
-            'header.end': None,
-            'ticks': obj['extract']['headers']['binary']['last_tick'],
-        },
-        'features': obj['extract']['extracted'],
-        'players': {},
-        'armies': {},
-    }
-    if 'launched_at' in obj['extract']['headers']['json'] and 'game_end' in obj['extract']['headers']['json']:
-        result['durations']['header.start'] = datetime.fromtimestamp(obj['extract']['headers']['json']['launched_at'])
-        result['durations']['header.end'] = datetime.fromtimestamp(obj['extract']['headers']['json']['game_end'])
+    result = restructure_dict(obj, BASE_STRUCTURE)
     all_stats = obj['load']['playerStats'].values()
     stats_by_owner_id = {stats['player']['id']: stats for stats in all_stats}
     for player_index in (0, 1):
@@ -107,19 +112,16 @@ def build_curated_dict(obj):
                           obj['id'], stats['beforeMean'], army['MEAN'])
             rating_matched = False
         if army['Faction'] != stats['faction']:
-            raise InvalidObject("replay/db disagree on %s faction (%s vs %s)" % (login, army['Faction'], stats['faction']))
-        result['players'][key] = {
-            'id': stats['player']['id'],
-            'login': stats['player']['login'],
-            'playing_since': parse_iso8601(stats['player']['createTime']),
-            'trueskill_mean_before': stats['beforeMean'],
-            'trueskill_deviation_before': stats['beforeDeviation'],
-            'trueskill_mean_after': stats['afterMean'],
-            'trueskill_deviation_after': stats['afterDeviation'],
-            'trueskill_db_matches_game': rating_matched,
-            'army_num_games': int_or_none(army.get('NG')),
-            'army_faf_rating': int_or_none(army.get('PL')),
-        }
+            raise InvalidObject("replay/db disagree on %r faction (%s vs %s)" % (login, army['Faction'], stats['faction']))
+
+        result['players'][key] = restructure_dict(stats, PLAYER_STRUCTURE)
+        result['players'][key]['trueskill_db_matches_game'] = rating_matched
+        # these two variables are odd; they're set on 'army', but they belong
+        # with 'player'; they're sometimes missing altogether, and sometimes
+        # are '' (empty string), which can't be casted.
+        result['players'][key]['army_num_games'] = int_or_none(army.get('NG'))
+        result['players'][key]['army_faf_rating'] = int_or_none(army.get('PL'))
+
         result['armies'][key] = {
             'name': army['PlayerName'],
             'faction': FACTIONS.get(army['Faction'], 'NOTFOUND'),

@@ -75,7 +75,7 @@ def start_store():
     process.stdin.write(REDIS_CONF.encode())
     process.stdin.close()
     write_pid(process.pid)
-    block_wait(10, 0.1, predicate=is_alive, error=NotRunning('pid %d failed ping' % process.pid))
+    block_wait(100, 0.1, predicate=is_alive, error=NotRunning('pid %d failed ping' % process.pid))
 
 def stop_store():
     pid = get_pid()

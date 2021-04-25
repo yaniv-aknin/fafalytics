@@ -2,6 +2,7 @@ import time
 import click
 import logging
 import os
+import contextlib
 
 from .storage import get_client
 
@@ -52,28 +53,61 @@ def decode_level(level):
     if level > 10:
         return 'INFO', 'bright_green'
     return 'DEBG', 'bright_white'
-def echo_log_messages(messages):
-    relative_timestamp = time.time()
-    fmt = '%(process)07d %(timestamp).2f %(level)s %(module)s:%(lineno)d %(line)s'
-    for identifier, obj in messages:
-        level, color = decode_level(int(obj[b'levelno']))
-        msg = {
-            'process': int(obj[b'process']),
-            'timestamp': relative_timestamp-float(obj[b'created']),
-            'level': level,
-            'module': obj[b'module'].decode(),
-            'lineno': int(obj[b'lineno']),
-            'line': obj[b'line'].decode(),
-        }
-        printable = fmt % msg
-        click.secho(printable, fg=color)
+def format_log_message(obj, relative_time=None):
+    timestamp = float(obj[b'created'])
+    if relative_time:
+        timestamp = relative_time - timestamp
+    level, color = decode_level(int(obj[b'levelno']))
+    fmt = '%(process)07d %(timestamp)08.2f %(level)s %(module)s:%(lineno)d %(line)s'
+    msg = {
+        'process': int(obj[b'process']),
+        'timestamp': timestamp,
+        'level': level,
+        'module': obj[b'module'].decode(),
+        'lineno': int(obj[b'lineno']),
+        'line': obj[b'line'].decode(),
+    }
+    return (fmt % msg), color
 
-@click.command()
+@click.group()
 def log():
-    "Print the log stored in the datastore"
-    response = get_client().xread({LOG_STREAM_KEY: 0})
+    "Datastore based logging"
+
+def get_messages(client, identifier=0, block=None):
+    response = get_client().xread({LOG_STREAM_KEY: identifier}, block=block)
     if not response:
         return
     stream, messages = response[0]
     assert stream == LOG_STREAM_KEY, stream
-    echo_log_messages(messages)
+    return messages
+
+@log.command()
+def view():
+    "Load/print full log stream"
+    client = get_client()
+    start = time.time()
+    messages = get_messages(client)
+    if not messages:
+        click.echo('(empty)')
+        return
+    for identifier, obj in messages:
+        formatted, color = format_log_message(obj, relative_time=start)
+        click.secho(formatted, fg=color)
+
+@log.command()
+def tail():
+    "Print log lines as they are emitted"
+    client = get_client()
+    start = time.time()
+    identifier = "$"
+    with contextlib.suppress(KeyboardInterrupt):
+        while True:
+            messages = get_messages(client, identifier, block=0)
+            for identifier, obj in messages:
+                formatted, color = format_log_message(obj, relative_time=start)
+                click.secho(formatted, fg=color)
+
+@log.command()
+def flush():
+    "Discard the log"
+    get_client().delete(LOG_STREAM_KEY)

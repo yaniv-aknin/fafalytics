@@ -7,6 +7,7 @@ import pandas as pd
 
 from .storage import get_client
 from .pyutils import EchoTimer
+from .parsing import FACTIONS
 
 def parse_iso8601(datestr):
     assert datestr[-1] == 'Z'
@@ -93,19 +94,19 @@ def build_curated_dict(obj):
             'id': stats['player']['id'],
             'login': stats['player']['login'],
             'playing_since': parse_iso8601(stats['player']['createTime']),
-            'num_games': army['NG'],
             'trueskill_mean_before': stats['beforeMean'],
             'trueskill_deviation_before': stats['beforeDeviation'],
             'trueskill_mean_after': stats['afterMean'],
             'trueskill_deviation_after': stats['afterDeviation'],
             'trueskill_db_matches_game': rating_matched,
-            'faf_rating': army['PL'],
+            'army_num_games': int(army['NG']),
+            'army_faf_rating': int(army['PL']),
         }
         result['armies'][key] = {
             'name': army['PlayerName'],
-            'faction': army['Faction'],
-            'start_spot': army['StartSpot'],
-            'color': army['ArmyColor'],
+            'faction': FACTIONS.get(army['Faction'], 'NOTFOUND'),
+            'start_spot': str(army['StartSpot']),
+            'color': str(army['ArmyColor']),
             'result': stats['result'],
             'score': stats['score'],
         }

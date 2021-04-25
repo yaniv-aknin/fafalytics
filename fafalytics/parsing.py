@@ -16,7 +16,13 @@ from .pyutils import Timer
 from .manyfiles import file_processor, process_all_files
 
 ALL_COMMANDS = tuple(range(24))
-FACTIONS = lambda x: {k:v for k,v in enumerate('uef aeon cybran seraphim nomads unknown'.split())}[x-1]
+# See Zulip discussion on the faction order, mapping factions isn't trivial:
+#  https://faforever.zulipchat.com/#narrow/stream/203478-general/topic/Faction.20Order/near/235006069
+# I went with Sheikah's approach:
+#  > You can continue this discussion but for the client I will just use the
+#  > four basic ones and everything else will be considered random as that is
+#  > the only consistent thing
+FACTIONS = {k:v for k,v in enumerate(('uef', 'aeon', 'cybran', 'seraphim'), 1)}
 
 def extract_v1(buf):
     decoded = base64.decodebytes(buf)
@@ -51,7 +57,7 @@ def get_command_timeseries(body):
         for player, commands in atom.items():
             for command, args in commands.items():
                 if command == 'Advance':
-                    offset_ms += TICK_MILLISECONDS * args['advance']
+                    offset_ms += TICK_MILLISECONDS * int(args['advance'])
                     continue
                 if command in ('VerifyChecksum', 'SetCommandSource'):
                     continue

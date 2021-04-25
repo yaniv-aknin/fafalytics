@@ -25,7 +25,11 @@ class TimeToFirstFactory(Extractor):
         if command['cmd_data']['blueprint_id'] in self.T1_FACTORIES:
             if command['player'] in self.first_factory:
                 return
-            self.first_factory[command['player']] = command['offset_ms']
+            # casting offset_ms to int because the parser multiplied it by the
+            # 'advance' arg of the 'Advance' command, and that was parsed as an
+            # uncasted '1.0' float; I would change it only in parsing.py, but
+            # then I'd have to re-parse all 500k game dataset, which sucks
+            self.first_factory[command['player']] = int(command['offset_ms'])
         if len(self.first_factory) == 2:
             raise ExtractorDone()
     def emit(self):
@@ -52,7 +56,7 @@ class APM(Extractor):
     def feed(self, command):
         if command['type'] not in self.ACTIONS:
             return
-        self.last_offset = command['offset_ms']
+        self.last_offset = int(command['offset_ms'])
         self.actions[command['player']] += 1
         if command['offset_ms'] > self.THREE_MINUTES_IN_MS and self.actions_3m is None:
             self.actions_3m = dict(self.actions)

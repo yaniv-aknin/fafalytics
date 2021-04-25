@@ -98,7 +98,7 @@ def build_curated_dict(obj):
             stats = stats_by_owner_id[army['OwnerID']]
         except KeyError:
             raise InvalidObject(
-                'army with owner %s has no stats (found %s)' % (army['OwnerID'], ','.join(str(k for k in stats_by_owner_id))))
+                'army with owner %s has no stats (found %s)' % (army['OwnerID'], ','.join(str(k) for k in stats_by_owner_id)))
         login = stats['player']['login']
         rating_matched = True
         if 'MEAN' in army and abs(army['MEAN'] - stats['beforeMean']) < 1:

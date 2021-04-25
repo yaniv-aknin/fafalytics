@@ -7,38 +7,55 @@ import click
 from .storage import get_client
 from .parsing import get_parsed
 from .output import yields_outputs, OUTPUT_CALLBACKS
-from .units import units
+from .units import id_by_categories as C
 from .manyfiles import file_processor, yield_processed_files
 from .logs import log_invocation
 
-class ExtractorDone(StopIteration):
-    pass
 class Extractor:
     def __str__(self):
         return self.__class__.__name__
-class TimeToFirstFactory(Extractor):
-    T1_FACTORIES = frozenset((unit.id for unit, score in units.search.categories("++FACTORY ++TECH1")))
+class TimeToFirst(Extractor):
+    "A feature extractor focused on game timeline. 'Time to first T2 mexer', etc"
+    FEATURES = {
+        't1_factory': C('factory tech1'),
+        't1_land': C('factory tech1 land'),
+        't1_air': C('factory tech1 air'),
+        't1_naval': C('factory tech1 naval'),
+        't2_factory': C('factory tech2 -supportfactory'),
+        't2_support': C('tech2 supportfactory'),
+        't1_mexer': C('tech1 massextraction'),
+        't2_mexer': C('tech2 massextraction'),
+        't3_mexer': C('tech3 massextraction'),
+    }
     def __init__(self):
-        self.first_factory = {}
+        self.features = self.FEATURES.copy()
+        self.result = {0: {k: None for k in self.FEATURES},
+                       1: {k: None for k in self.FEATURES}}
     def feed(self, command):
+        if not self.features:
+            return
         if command['type'] != 'issue':
             return
-        if command['cmd_data']['blueprint_id'] in self.T1_FACTORIES:
-            if command['player'] in self.first_factory:
-                return
-            # casting offset_ms to int because the parser multiplied it by the
-            # 'advance' arg of the 'Advance' command, and that was parsed as an
-            # uncasted '1.0' float; I would change it only in parsing.py, but
-            # then I'd have to re-parse all 500k game dataset, which sucks
-            self.first_factory[command['player']] = int(command['offset_ms'])
-        if len(self.first_factory) == 2:
-            raise ExtractorDone()
+        assert command['player'] in (0, 1)
+        # casting offset_ms to int because the parser multiplied it by the
+        # 'advance' arg of the 'Advance' command, and that was parsed as an
+        # uncasted '1.0' float; I would change it only in parsing.py, but
+        # then I'd have to re-parse all 500k game dataset, which sucks
+        self.update(command['cmd_data']['blueprint_id'],
+                    command['player'], int(command['offset_ms']))
+    def update(self, unit_id, player, offset):
+        for feature, unit_ids in tuple(self.features.items()):
+            if unit_id not in unit_ids:
+                continue
+            if self.result[player][feature]:
+                continue
+            self.result[player][feature] = offset
+            other_player = (player + 1) % 2
+            if self.result[other_player][feature]:
+                self.features.pop(feature)
     def emit(self):
-        assert not(set(self.first_factory) - {0,1})
-        return {
-            'player1.first_factory_ms': self.first_factory.get(0, None),
-            'player2.first_factory_ms': self.first_factory.get(1, None),
-        }
+        return {'player%d' % player+1: {'first': features}
+                for player, features in self.result.items()}
 
 class APM(Extractor):
     ACTIONS = frozenset(('issue', 'command_count_increase', 'command_count_decrease', 'factory_issue'))
@@ -90,15 +107,9 @@ class APM(Extractor):
         return result
 
 def run_extractors(commands, *extractors):
-    active_extractors = set(extractors)
     for command in commands:
-        for extractor in tuple(active_extractors):
-            try:
-                extractor.feed(command)
-            except ExtractorDone:
-                active_extractors.remove(extractor)
-        if not active_extractors:
-            break
+        for extractor in extractors:
+            extractor.feed(command)
     result = {}
     for extractor in extractors:
         result.update(extractor.emit())
@@ -114,7 +125,7 @@ def extract_replay(filename):
                                   'ticks': ','.join(str(t) for t in desyncs)}
     extracted = run_extractors(
         replay['commands'],
-        TimeToFirstFactory(),
+        TimeToFirst(),
         APM(),
     )
     return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}

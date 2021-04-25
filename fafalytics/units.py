@@ -511,3 +511,11 @@ units = Table('units')
 units.json_import(_UNITS)
 units.create_index('id', unique=True)
 units.create_search_index("categories")
+
+def id_by_categories(categories):
+    fmt = lambda c: ('-'+c if c.startswith('-') else '++'+c).upper()
+    query = " ".join(fmt(c) for c in categories.split())
+    return frozenset(unit.id for unit, score in units.search.categories(query))
+
+def id_to_units(ids):
+    return units.where(id=Table.is_in(ids))

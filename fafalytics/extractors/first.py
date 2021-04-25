@@ -41,5 +41,5 @@ class TimeToFirst(Extractor):
             if self.result[other_player][feature]:
                 self.features.pop(feature)
     def emit(self):
-        return {'player%d' % player+1: {'first': features}
+        return {'player%d' % (player+1): {'first': features}
                 for player, features in self.result.items()}

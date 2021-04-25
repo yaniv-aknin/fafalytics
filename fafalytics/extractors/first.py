@@ -4,15 +4,21 @@ from ..units import id_by_categories as C
 class TimeToFirst(Extractor):
     "A feature extractor focused on game timeline. 'Time to first T2 mexer', etc"
     FEATURES = {
-        't1_factory': C('factory tech1'),
-        't1_land': C('factory tech1 land'),
-        't1_air': C('factory tech1 air'),
-        't1_naval': C('factory tech1 naval'),
-        't2_factory': C('factory tech2 -supportfactory'),
-        't2_support': C('tech2 supportfactory'),
-        't1_mexer': C('tech1 massextraction'),
-        't2_mexer': C('tech2 massextraction'),
-        't3_mexer': C('tech3 massextraction'),
+        't1_land':      C('tech1 factory land'),
+        't1_air':       C('tech1 factory air'),
+        't1_naval':     C('tech1 factory naval'),
+        't2_factory':   C('tech2 factory -supportfactory'),
+        't2_support':   C('tech2 supportfactory'),
+        't1_mexer':     C('tech1 massextraction'),
+        't2_mexer':     C('tech2 massextraction'),
+        't3_mexer':     C('tech3 massextraction'),
+        't1_pgen':      C('tech1 energyproduction -hydrocarbon'),
+        't1_hydro':     C('tech1 energyproduction hydrocarbon'),
+        't2_pgen':      C('tech2 energyproduction'),
+        't3_pgen':      C('tech3 energyproduction structure'),
+        't1_transport': C('tech1 transportation'),
+        't3_sacu':      C('builtbyquantumgate'),
+        't4_exp':       C('experimental'),
     }
     def __init__(self):
         self.features = self.FEATURES.copy()

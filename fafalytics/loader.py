@@ -60,5 +60,6 @@ class GameJsonResolver:
 @yields_outputs
 def load(output, jsons):
     "Load Game model JSONs into datastore"
-    for json in jsons:
-        yield from GameJsonResolver.from_handle(json)
+    with click.progressbar(jsons, label='Loading') as bar:
+        for json in bar:
+            yield from GameJsonResolver.from_handle(json)

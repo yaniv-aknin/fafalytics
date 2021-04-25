@@ -6,6 +6,7 @@ import click
 import pandas as pd
 
 from .storage import get_client
+from .pyutils import EchoTimer
 
 def parse_iso8601(datestr):
     assert datestr[-1] == 'Z'
@@ -118,7 +119,8 @@ def flattened(format, output):
     keys = get_valid_objects_keys(client)
     with click.progressbar(keys, label='Reading datastore') as bar:
         objects = list(yield_deserilized_values(client, bar))
-    write_dataframe_in_format(objects, output, format)
+    with EchoTimer('Writing %d objects to dataframe' % len(objects)):
+        write_dataframe_in_format(objects, output, format)
 
 @export.command()
 @export_decorator
@@ -127,11 +129,14 @@ def curated(format, output):
     client = get_client()
     keys = get_valid_objects_keys(client)
     objects = []
+    invalid = 0
     with click.progressbar(keys, label='Reading datastore') as bar:
         for obj in yield_deserilized_values(client, bar):
             try:
                 objects.append(build_curated_dict(obj))
             except InvalidObject as error:
+                invalid += 1
                 logging.warning('skipping %s: %s' % (obj['id'], error))
                 continue
-    write_dataframe_in_format(objects, output, format)
+    with EchoTimer('Writing %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
+        write_dataframe_in_format(objects, output, format)

@@ -1,4 +1,5 @@
 import time
+import click
 import contextlib
 from typing import Callable, Iterable
 
@@ -39,3 +40,15 @@ class Timer:
             raise ValueError('not started')
         end = self.end or time.time()
         return end-self.start
+
+class EchoTimer(Timer):
+    def __init__(self, message):
+        super().__init__()
+        self.message = message
+    def __enter__(self):
+        super().__enter__()
+        click.echo(self.message+' ', nl=False)
+    def __exit__(self, *exc):
+        super().__exit__(*exc)
+        if not any(exc):
+            click.echo('(%.2fs)' % self.elapsed)

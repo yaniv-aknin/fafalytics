@@ -52,3 +52,34 @@ class EchoTimer(Timer):
         super().__exit__(*exc)
         if not any(exc):
             click.echo('(%.2fs)' % self.elapsed)
+
+class Query:
+    def __init__(self, path, missing=None, cast=None, reraise=KeyError):
+        self.path = path
+        self.missing = missing
+        self.cast = cast
+        self.reraise = reraise
+    def __call__(self, obj):
+        for component in self.path.split('/'):
+            try:
+                obj = obj[component]
+            except KeyError as error:
+                if self.missing:
+                    return self.missing(obj, component)
+                if self.reraise is KeyError:
+                    raise
+                else:
+                    raise self.reraise from error
+                raise
+        return obj if self.cast is None else self.cast(obj)
+
+def restructure_dict(src, queries):
+    dst = {}
+    for dst_path, query in queries.items():
+        dst_obj = dst
+        components = dst_path.split('/')
+        prefix, key = components[:-1], components[-1]
+        for component in prefix:
+            dst_obj = dst_obj.setdefault(component, {})
+        dst_obj[key] = query(src)
+    return dst

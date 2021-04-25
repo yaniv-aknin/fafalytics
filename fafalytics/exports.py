@@ -22,12 +22,18 @@ def int_or_none(obj):
     except (TypeError, ValueError):
         return None
 
-def get_valid_objects_keys(client):
+def get_valid_game_ids(client):
+    logging.info('loading game ids')
     load_keys = set(client.hkeys('load'))
     extract_keys = set(client.hkeys('extract'))
-    for subset, key in ((load_keys-extract_keys, 'extract'), (extract_keys-load_keys, 'load')):
-        for item in subset:
-            logging.warning('skipping %s, no %r data', item, key)
+    missing_extracts = load_keys - extract_keys
+    missing_loads = extract_keys - load_keys
+    for keys, counterpart in ((missing_extracts, 'load'), (missing_loads, 'extract')):
+        if not keys:
+            continue
+        logging.warn('skipping %d games with no %r data', len(keys), counterpart)
+        for key in keys:
+            logging.debug('game %s has no %r', key, counterpart)
     return load_keys & extract_keys
 
 def yield_deserilized_values(client, keys):
@@ -45,18 +51,6 @@ def write_dataframe_in_format(objects, filename, fmt=None):
         df.to_csv(filename)
     else:
         df.to_parquet(filename)
-
-@click.group()
-@log_invocation
-def export():
-    "Dump datastore into a CSV/Parquet file"
-
-def export_decorator(func):
-    return (
-        click.option('--format', type=click.Choice(['parquet', 'csv']))(
-            click.argument('output', type=click.Path(dir_okay=False, writable=True))(func)
-        )
-    )
 
 class InvalidObject(ValueError):
     pass
@@ -132,26 +126,46 @@ def build_curated_dict(obj):
         }
     return result
 
-@export.command()
-@export_decorator
-def flattened(format, output):
-    "Dump everything in the datastore using flattened JSONs (not recommended, messy)"
+@click.group()
+@log_invocation
+@click.option('--format', type=click.Choice(['parquet', 'csv']))
+@click.option('--game-ids', multiple=True, type=int)
+@click.argument('output', type=click.Path(dir_okay=False, writable=True))
+@click.pass_context
+def export(ctx, format, game_ids, output):
+    "Dump datastore into a CSV/Parquet file"
     client = get_client()
-    keys = get_valid_objects_keys(client)
-    with click.progressbar(keys, label='Reading datastore') as bar:
-        objects = list(yield_deserilized_values(client, bar))
-    with EchoTimer('Writing %d objects to dataframe' % len(objects)):
-        write_dataframe_in_format(objects, output, format)
+    game_ids = [str(game_id).encode() for game_id in game_ids]
+    if not game_ids:
+        game_ids = get_valid_game_ids(client)
+    ctx.obj = (client, game_ids, format, output)
+
+@export.resultcallback()
+def export_callback(retval, format, game_ids, output):
+    objects, invalid = retval
+    if not objects:
+        click.secho('(nothing to write)')
+        return
+    with EchoTimer('Writing %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
+        write_dataframe_in_format(objects, ctx.parent.args['output'], ctx.parent.params['format'])
 
 @export.command()
-@export_decorator
-def curated(format, output):
+@click.pass_context
+def flattened(ctx):
+    "Dump everything in the datastore using flattened JSONs (not recommended, messy)"
+    client, game_ids, format, output = ctx.obj
+    with click.progressbar(game_ids, label='Reading datastore') as bar:
+        objects = list(yield_deserilized_values(client, bar))
+    return objects, invalid
+
+@export.command()
+@click.pass_context
+def curated(ctx):
     "Dump specific fields from the datastore to a nice CSV/Parquet file (recommended)"
-    client = get_client()
-    keys = get_valid_objects_keys(client)
+    client, game_ids, format, output = ctx.obj
     objects = []
     invalid = 0
-    with click.progressbar(keys, label='Reading datastore') as bar:
+    with click.progressbar(game_ids, label='Reading datastore') as bar:
         for obj in yield_deserilized_values(client, bar):
             try:
                 objects.append(build_curated_dict(obj))
@@ -159,5 +173,4 @@ def curated(format, output):
                 invalid += 1
                 logging.warning('skipping %s: %s' % (obj['id'], error))
                 continue
-    with EchoTimer('Writing %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
-        write_dataframe_in_format(objects, output, format)
+    return objects, invalid

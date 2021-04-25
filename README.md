@@ -66,7 +66,7 @@ $ fafalytics fetch games /tmp/fafalytics
 $ fafalytics load /tmp/fafalytics/*.json
 $ fafalytics fetch replay-urls /tmp/fafalytics | xargs wget
 $ fafalytics extract /tmp/fafalytics/*.fafreplay
-$ fafalytics export curated /tmp/fafalytics/result.parquet
+$ fafalytics export /tmp/fafalytics/result.parquet curated
 ```
 
 ## Thanks

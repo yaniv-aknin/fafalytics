@@ -9,7 +9,7 @@ import pandas as pd
 
 from .storage import get_client
 from .pyutils import EchoTimer, Query, restructure_dict, Literal
-from .parsing import FACTIONS
+from .parsing import map_faction
 from .logs import log_invocation
 
 def parse_iso8601(datestr):
@@ -71,28 +71,36 @@ BASE_STRUCTURE = {
     'durations/header.end':       Q('extract/headers/json/game_end', cast=datetime.fromtimestamp, missing=null),
     'durations/ticks':            Q('extract/headers/binary/last_tick'),
     'features':                   Q('extract/extracted'),
-    'players':                    Q(Literal({})),
-    'armies':                     Q(Literal({})),
 }
 PLAYER_STRUCTURE = {
-    'id':                         Q('player/id'),
-    'login':                      Q('player/login'),
-    'playing_since':              Q('player/createTime', cast=parse_iso8601),
-    'trueskill_mean_before':      Q('beforeMean'),
-    'trueskill_deviation_before': Q('beforeDeviation'),
-    'trueskill_mean_after':       Q('afterMean'),
-    'trueskill_deviation_after':  Q('afterDeviation'),
+    'player/id':                         Q('stats/player/id'),
+    'player/login':                      Q('stats/player/login'),
+    'player/playing_since':              Q('stats/player/createTime', cast=parse_iso8601),
+    'player/trueskill_mean_before':      Q('stats/beforeMean'),
+    'player/trueskill_deviation_before': Q('stats/beforeDeviation'),
+    'player/trueskill_mean_after':       Q('stats/afterMean'),
+    'player/trueskill_deviation_after':  Q('stats/afterDeviation'),
+    'player/result':                     Q('stats/result'),
+    'player/score':                      Q('stats/score'),
+    'army/name':                         Q('army/PlayerName'),
+    'army/faction':                      Q('army/Faction', cast=map_faction),
+    'army/start_spot':                   Q('army/StartSpot', cast=str),
+    'army/color':                        Q('army/ArmyColor', cast=str),
+    # these two variables are odd; they're set on 'army', but they belong
+    # with 'player'; they're sometimes missing altogether, and sometimes
+    # are '' (empty string), which cant easily be casted with int()
+    'player/army_num_games':             Q('army/NG', cast=int_or_none, missing=null),
+    'player/army_faf_rating':            Q('army/PL', cast=int_or_none, missing=null),
 }
 
-def build_curated_dict(obj):
+def match_player_stats_to_armies(obj):
     human_armies = {k: v for k, v in obj['extract']['headers']['binary']['armies'].items() if v['Human']}
     if len(human_armies) != 2:
         raise InvalidObject("%d human armies (expected 2)" % len(human_armies))
-    result = restructure_dict(obj, BASE_STRUCTURE)
     all_stats = obj['load']['playerStats'].values()
     stats_by_owner_id = {stats['player']['id']: stats for stats in all_stats}
     for player_index in (0, 1):
-        key = 'player%d' % (player_index + 1)
+        player_key = 'player%d' % (player_index + 1)
         army = human_armies[str(player_index)]
         try:
             stats = stats_by_owner_id[army['OwnerID']]
@@ -104,26 +112,16 @@ def build_curated_dict(obj):
         if 'MEAN' in army and abs(army['MEAN'] - stats['beforeMean']) < 1:
             logging.debug('game %s has db vs replay beforeMean mismatch - db=%s, game=%s',
                           obj['id'], stats['beforeMean'], army['MEAN'])
-            rating_matched = False
         if army['Faction'] != stats['faction']:
             raise InvalidObject("replay/db disagree on %r faction (%s vs %s)" % (login, army['Faction'], stats['faction']))
+        obj.setdefault('sides', {})
+        obj['sides'][player_key] = {'army': army, 'stats': stats}
 
-        result['players'][key] = restructure_dict(stats, PLAYER_STRUCTURE)
-        result['players'][key]['trueskill_db_matches_game'] = rating_matched
-        # these two variables are odd; they're set on 'army', but they belong
-        # with 'player'; they're sometimes missing altogether, and sometimes
-        # are '' (empty string), which can't be casted.
-        result['players'][key]['army_num_games'] = int_or_none(army.get('NG'))
-        result['players'][key]['army_faf_rating'] = int_or_none(army.get('PL'))
-
-        result['armies'][key] = {
-            'name': army['PlayerName'],
-            'faction': FACTIONS.get(army['Faction'], 'NOTFOUND'),
-            'start_spot': str(army['StartSpot']),
-            'color': str(army['ArmyColor']),
-            'result': stats['result'],
-            'score': stats['score'],
-        }
+def build_curated_dict(obj):
+    match_player_stats_to_armies(obj)
+    result = restructure_dict(obj, BASE_STRUCTURE)
+    for player_key, player_data in obj['sides'].items():
+        result[player_key] = restructure_dict(player_data, PLAYER_STRUCTURE)
     return result
 
 @click.group()
@@ -138,7 +136,7 @@ def export(ctx, format, game_ids, output):
     game_ids = [str(game_id).encode() for game_id in game_ids]
     if not game_ids:
         game_ids = get_valid_game_ids(client)
-    ctx.obj = (client, game_ids, format, output)
+    ctx.obj = (client, game_ids)
 
 @export.resultcallback()
 def export_callback(retval, format, game_ids, output):
@@ -147,13 +145,13 @@ def export_callback(retval, format, game_ids, output):
         click.secho('(nothing to write)')
         return
     with EchoTimer('Writing %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
-        write_dataframe_in_format(objects, ctx.parent.args['output'], ctx.parent.params['format'])
+        write_dataframe_in_format(objects, output, format)
 
 @export.command()
 @click.pass_context
 def flattened(ctx):
     "Dump everything in the datastore using flattened JSONs (not recommended, messy)"
-    client, game_ids, format, output = ctx.obj
+    client, game_ids = ctx.obj
     with click.progressbar(game_ids, label='Reading datastore') as bar:
         objects = list(yield_deserilized_values(client, bar))
     return objects, invalid
@@ -162,7 +160,7 @@ def flattened(ctx):
 @click.pass_context
 def curated(ctx):
     "Dump specific fields from the datastore to a nice CSV/Parquet file (recommended)"
-    client, game_ids, format, output = ctx.obj
+    client, game_ids = ctx.obj
     objects = []
     invalid = 0
     with click.progressbar(game_ids, label='Reading datastore') as bar:

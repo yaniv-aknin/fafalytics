@@ -1,5 +1,7 @@
 import time
+import functools
 import click
+import sys
 import logging
 import os
 import contextlib
@@ -7,6 +9,14 @@ import contextlib
 from .storage import get_client
 
 LOG_STREAM_KEY = b'log'
+
+def log_invocation(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        logging.info('fafalytics starting (%d args)', len(sys.argv))
+        logging.debug('first 20 args: %s', sys.argv[:20])
+        return func(*args, **kwargs)
+    return wrapper
 
 class DatastoreHandler(logging.Handler):
     def __init__(self, maxlen=10**6):

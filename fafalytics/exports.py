@@ -8,6 +8,7 @@ import pandas as pd
 from .storage import get_client
 from .pyutils import EchoTimer
 from .parsing import FACTIONS
+from .logs import log_invocation
 
 def parse_iso8601(datestr):
     assert datestr[-1] == 'Z'
@@ -44,6 +45,7 @@ def write_dataframe_in_format(objects, filename, fmt=None):
         df.to_parquet(filename)
 
 @click.group()
+@log_invocation
 def export():
     "Dump datastore into a CSV/Parquet file"
 

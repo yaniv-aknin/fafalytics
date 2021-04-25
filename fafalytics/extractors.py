@@ -9,6 +9,7 @@ from .parsing import get_parsed
 from .output import yields_outputs, OUTPUT_CALLBACKS
 from .units import units
 from .manyfiles import file_processor, yield_processed_files
+from .logs import log_invocation
 
 class ExtractorDone(StopIteration):
     pass
@@ -119,6 +120,7 @@ def extract_replay(filename):
     return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}
 
 @click.command()
+@log_invocation
 @file_processor
 @yields_outputs
 def extract(ctx, max_errors, infiles):

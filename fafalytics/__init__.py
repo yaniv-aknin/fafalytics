@@ -21,7 +21,6 @@ from .parsing import unpack
 @click.option('--loglevel', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False), default='WARNING')
 def main(loggers, loglevel):
     setup(loglevel, *loggers)
-    logging.info('starting with %d args: %r' % (len(sys.argv)-1, sys.argv[1:20]))
 
 main.add_command(datastore)
 main.add_command(load)

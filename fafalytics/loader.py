@@ -4,6 +4,7 @@ import click
 
 from .storage import get_client
 from .output import OUTPUT_CALLBACKS, yields_outputs
+from .logs import log_invocation
 
 class GameJsonResolver:
     inline_relationships = (
@@ -56,6 +57,7 @@ class GameJsonResolver:
             yield self.resolve(game, ())
 
 @click.command()
+@log_invocation
 @click.argument('jsons', nargs=-1, type=click.File('r'))
 @yields_outputs
 def load(output, jsons):

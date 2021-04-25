@@ -8,7 +8,7 @@ import click
 import pandas as pd
 
 from .storage import get_client
-from .pyutils import EchoTimer, Query, restructure_dict, Literal
+from .pyutils import EchoTimer, Query, restructure_dict, Literal, null
 from .parsing import map_faction
 from .logs import log_invocation
 
@@ -55,8 +55,6 @@ def write_dataframe_in_format(objects, filename, fmt=None):
 class InvalidObject(ValueError):
     pass
 Q = partial(Query, reraise=InvalidObject)
-def null(obj, component):
-    return None
 BASE_STRUCTURE = {
     'id':                         Q('id', cast=decode),
     'meta/title':                 Q('extract/headers/json/title'),

@@ -28,7 +28,7 @@ def get_valid_game_ids(client):
     extract_keys = set(client.hkeys('extract'))
     missing_extracts = load_keys - extract_keys
     missing_loads = extract_keys - load_keys
-    for keys, counterpart in ((missing_extracts, 'load'), (missing_loads, 'extract')):
+    for keys, counterpart in ((missing_extracts, 'extract'), (missing_loads, 'load')):
         if not keys:
             continue
         logging.warn('skipping %d games with no %r data', len(keys), counterpart)

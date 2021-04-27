@@ -1,4 +1,5 @@
 from contextlib import suppress
+import functools
 from os import path
 from subprocess import PIPE
 import os
@@ -27,6 +28,7 @@ class NotRunning(DatastoreError):
 class UnexpectedRunning(DatastoreError):
     pass
 
+@functools.cache
 def get_client():
     client = redis.Redis(unix_socket_path=SOCKPATH)
     client.ping()

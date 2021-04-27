@@ -6,7 +6,7 @@ import sys
 
 import click
 
-from .storage import datastore
+from .storage import datastore, configure
 from .extractors import extract
 from .loader import load
 from .exports import export
@@ -21,6 +21,7 @@ from .interact import interactive
 @click.option('--loggers', type=click.Choice(tuple(logs.handlers)), multiple=True, default=[first(handlers)])
 @click.option('--loglevel', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False), default='WARNING')
 def main(loggers, loglevel):
+    configure()
     setup(loglevel, *loggers)
 
 main.add_command(datastore)

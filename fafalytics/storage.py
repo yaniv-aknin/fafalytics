@@ -6,20 +6,25 @@ import os
 import signal
 import subprocess
 import time
+import threading
 
 import click
 import redis
 
 from .pyutils import block_wait, negate
 
-TMPDIR = '/tmp/.fafalytics.d'
-PIDFILE = TMPDIR + '/redis.pid'
-SOCKPATH = TMPDIR + '/redis.sock'
+
+settings = threading.local()
+def configure(tmpdir='/tmp/.fafalytics.d'):
+    global settings
+    settings.tmpdir = tmpdir
+    settings.pidfile = tmpdir + '/redis.pid'
+    settings.sockpath = tmpdir + '/redis.sock'
 REDIS_CONF = """
 port 0
 unixsocket %s
 unixsocketperm 755
-""" % SOCKPATH
+"""
 
 class DatastoreError(Exception):
     pass
@@ -30,21 +35,21 @@ class UnexpectedRunning(DatastoreError):
 
 @functools.cache
 def get_client():
-    client = redis.Redis(unix_socket_path=SOCKPATH)
+    client = redis.Redis(unix_socket_path=settings.sockpath)
     client.ping()
     return client
 
 def read_pid() -> int:
     try:
-        with open(PIDFILE) as handle:
+        with open(settings.pidfile) as handle:
             return int(handle.read())
     except FileNotFoundError:
-        raise NotRunning("unable to read pidfile %s" % PIDFILE)
+        raise NotRunning("unable to read pidfile %s" % settings.pidfile)
     except ValueError:
-        raise NotRunning("invalid pidfile %s" % PIDFILE)
+        raise NotRunning("invalid pidfile %s" % settings.pidfile)
 
 def write_pid(pid: int) -> None:
-    with open(PIDFILE, 'w') as handle:
+    with open(settings.pidfile, 'w') as handle:
         handle.write(str(pid))
 
 def is_alive() -> bool:
@@ -68,13 +73,13 @@ def get_pid() -> int:
     raise NotRunning("missing /proc/%d" % pid)
 
 def start_store():
-    if not path.exists(TMPDIR):
-        os.mkdir(TMPDIR)
+    if not path.exists(settings.tmpdir):
+        os.mkdir(settings.tmpdir)
     with suppress(NotRunning):
         pid = get_pid()
         raise UnexpectedRunning('already running at pid %d' % pid)
     process = subprocess.Popen(['redis-server', '-'], stdin=PIPE, stdout=subprocess.DEVNULL)
-    process.stdin.write(REDIS_CONF.encode())
+    process.stdin.write((REDIS_CONF % settings.sockpath).encode())
     process.stdin.close()
     write_pid(process.pid)
     block_wait(100, 0.1, predicate=is_alive, error=NotRunning('pid %d failed ping' % process.pid))

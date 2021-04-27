@@ -8,6 +8,7 @@ from ..logs import log_invocation
 from .apm import APM
 from .first import TimeToFirst
 from .commandmix import CommandMix
+from .spatial import Spatial
 
 def run_extractors(commands, *extractors):
     for command in commands:
@@ -21,8 +22,6 @@ def run_extractors(commands, *extractors):
 def extract_replay(filename):
     replay = get_parsed(filename)
     replay['binary']['last_tick'] = replay['remaining']['last_tick']
-    replay['binary'].pop('players')
-    replay['binary'].pop('scenario')
     desyncs = replay['remaining']['desync_ticks']
     replay['binary']['desync'] = {'count': len(desyncs),
                                   'ticks': ','.join(str(t) for t in desyncs)}
@@ -31,7 +30,10 @@ def extract_replay(filename):
         TimeToFirst(),
         APM(),
         CommandMix(),
+        Spatial(replay['binary']['scenario']['size'][1], replay['binary']['scenario']['size'][2]),
     )
+    replay['binary'].pop('players')
+    replay['binary'].pop('scenario')
     return {'id': replay['json']['uid'], 'headers': {'json': replay['json'], 'binary': replay['binary']}, 'extracted': extracted}
 
 @click.command()

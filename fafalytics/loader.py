@@ -3,7 +3,7 @@ import json
 import click
 
 from .storage import get_client
-from .output import OUTPUT_CALLBACKS, yields_outputs
+from .manyfiles import yields_outputs
 from .logs import log_invocation
 
 class GameJsonResolver:

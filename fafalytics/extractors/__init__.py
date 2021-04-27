@@ -1,8 +1,7 @@
 import click
 
 from ..parsing import get_parsed
-from ..output import yields_outputs, OUTPUT_CALLBACKS
-from ..manyfiles import file_processor, yield_processed_files
+from ..manyfiles import file_processor, yield_processed_files, yields_outputs
 from ..logs import log_invocation
 
 from .apm import APM

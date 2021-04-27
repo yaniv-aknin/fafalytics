@@ -6,6 +6,7 @@ import logging
 import os
 import contextlib
 
+import redis
 from .storage import get_client
 
 LOG_STREAM_KEY = b'log'
@@ -50,6 +51,8 @@ def setup(level, *handler_names):
             handler.setLevel(level)
             handler.setFormatter(logging.Formatter(fmt))
             root.addHandler(handler)
+        except redis.exceptions.ConnectionError:
+            pass
         except Exception as error:
             logging.warning('failed initializing logger %s: %s' % (handler_name, error))
 

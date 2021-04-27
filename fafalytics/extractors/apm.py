@@ -32,7 +32,7 @@ class APM(Extractor):
             'player1.mean_apm.first_5m': None,
             'player2.mean_apm.first_5m': None,
         }
-        if self.last_offset is not None:
+        if self.last_offset:
             result.update({
                 'player1.mean_apm.overall': self.actions[0] / self.last_offset_in_minutes,
                 'player2.mean_apm.overall': self.actions[1] / self.last_offset_in_minutes,

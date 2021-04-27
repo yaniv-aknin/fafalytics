@@ -1,7 +1,7 @@
-from .base import Extractor
+from .base import ExtractByCommand
 from ..units import id_by_categories as C
 
-class TimeToFirst(Extractor):
+class TimeToFirst(ExtractByCommand):
     "A feature extractor focused on game timeline. 'Time to first T2 mexer', etc"
     FEATURES = {
         't1_land':      C('tech1 factory land'),
@@ -24,12 +24,9 @@ class TimeToFirst(Extractor):
         self.features = self.FEATURES.copy()
         self.result = {0: {k: None for k in self.FEATURES},
                        1: {k: None for k in self.FEATURES}}
-    def feed(self, command):
+    def issue(self, command):
         if not self.features:
             return
-        if command['type'] != 'issue':
-            return
-        assert command['player'] in (0, 1)
         # casting offset_ms to int because the parser multiplied it by the
         # 'advance' arg of the 'Advance' command, and that was parsed as an
         # uncasted '1.0' float; I would change it only in parsing.py, but

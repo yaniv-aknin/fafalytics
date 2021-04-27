@@ -1,8 +1,8 @@
 from shapely.geometry import Polygon, box
 
-from .base import Extractor
+from .base import ExtractByCommand
 
-class Spatial(Extractor):
+class Spatial(ExtractByCommand):
     "A feature extractor focused on spatial data (command coordinates on the map)"
     def __init__(self, width, height):
         self.area = box(0, 0, width, height).area
@@ -11,14 +11,13 @@ class Spatial(Extractor):
         self.coordinates = {0: [], 1: []}
         self.minutes = {'1m': 1000*60, '3m': 1000*60*3, '5m': 1000*60*5}
     def extract_coordinates(self, command):
+        # coordinates are ordered x (horizontal), z (altitude), y (veritcal)
         return ((command['cmd_data']['target']['position'] or (None, None, None))[0],
                 (command['cmd_data']['target']['position'] or (None, None, None))[2])
     def hull_coverage(self, coordinates):
         "Ratio of the area of the convex hull for the given coordinates relative to the entire map"
         return Polygon(coordinates).convex_hull.area/self.area
-    def feed(self, command):
-        if command['type'] != 'issue':
-            return
+    def issue(self, command):
         coordinates = self.extract_coordinates(command)
         if not all(coordinates):
             return

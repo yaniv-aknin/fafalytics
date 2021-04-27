@@ -1,11 +1,11 @@
 from collections import Counter
 
-from .base import Extractor
+from .base import ExtractByCommand
 from ..parsing import ISSUE_TYPE_ID_TO_NAME
 
 from replay_parser.constants import ActionType
 
-class CommandMix(Extractor):
+class CommandMix(ExtractByCommand):
     "A feature extractor focused on commands issued. 'How much reclaim', etc"
     # these are the top-9 commands as found by teolicy through sampling 1,000
     # 1v1 ladder games played between Jan and Mar 2021
@@ -17,9 +17,7 @@ class CommandMix(Extractor):
     def __init__(self):
         self.result = {0: {'first_5m': Counter(), 'overall': Counter()},
                        1: {'first_5m': Counter(), 'overall': Counter()}}
-    def feed(self, command):
-        if command['type'] != 'issue':
-            return
+    def issue(self, command):
         command_type = command['cmd_data']['command_type']
         if command_type not in self.TOP_COMMANDS:
             command_type = -1

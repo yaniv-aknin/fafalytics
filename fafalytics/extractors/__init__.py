@@ -4,7 +4,7 @@ from ..parsing import get_parsed
 from ..manyfiles import file_processor, yield_processed_files, yields_outputs
 from ..logs import log_invocation
 
-from .apm import APM
+from .apm import APM, Minute
 from .first import TimeToFirst
 from .commandmix import CommandMix
 from .spatial import Spatial
@@ -27,7 +27,7 @@ def extract_replay(filename):
     extracted = run_extractors(
         replay['commands'],
         TimeToFirst(),
-        APM(),
+        APM({Minute(3): 'first_3m', Minute(5): 'first_5m'}),
         CommandMix(),
         Spatial(replay['binary']['scenario']['size'][1], replay['binary']['scenario']['size'][2]),
     )

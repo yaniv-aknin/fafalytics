@@ -14,6 +14,7 @@ def test_query():
     assert Query('foo')({'foo': 1}) == 1
     assert Query('foo/bar')({'foo': {'bar': 1}}) == 1
     assert Query('foo/bar', missing=missing)({'foo': {}}) == 5
+    assert Query('foo/[0]', missing=missing)({'foo': [5]}) == 5
     assert Query(Literal(None))({}) is None
     with TestCase().assertRaises(RuntimeError):
         Query('foo', reraise=RuntimeError)({})

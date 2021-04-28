@@ -72,6 +72,8 @@ class Query:
         if isinstance(self.path, Literal):
             return self.path.value
         for component in self.path.split('/'):
+            if component.startswith('[') and component.endswith(']'):
+                component = int(component[1:-1])
             try:
                 obj = obj[component]
             except KeyError as error:

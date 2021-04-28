@@ -1,6 +1,5 @@
 from contextlib import suppress
 import functools
-from os import path
 from subprocess import PIPE
 import os
 import signal
@@ -10,6 +9,7 @@ import threading
 
 import click
 import redis
+import py
 
 from .pyutils import block_wait, negate
 
@@ -17,15 +17,17 @@ from .pyutils import block_wait, negate
 settings = threading.local()
 def configure(tmpdir='/tmp/.fafalytics.d'):
     global settings
+    tmpdir = py.path.local(tmpdir)
     settings.tmpdir = tmpdir
-    settings.pidfile = tmpdir + '/redis.pid'
-    settings.sockpath = tmpdir + '/redis.sock'
+    settings.pidfile = tmpdir / '/redis.pid'
+    settings.sockpath = tmpdir / '/redis.sock'
 REDIS_BINARY = 'redis-server'
 REDIS_CONF = """
 port 0
 unixsocket %s
 unixsocketperm 755
 """
+PROC = py.path.local('/proc')
 
 class DatastoreError(Exception):
     pass
@@ -36,7 +38,7 @@ class UnexpectedRunning(DatastoreError):
 
 @functools.cache
 def get_client():
-    client = redis.Redis(unix_socket_path=settings.sockpath)
+    client = redis.Redis(unix_socket_path=str(settings.sockpath))
     client.ping()
     return client
 
@@ -69,13 +71,13 @@ def is_running() -> bool:
 
 def get_pid() -> int:
     pid = read_pid()
-    if path.exists('/proc/' + str(pid)):
+    proc_path = PROC/str(pid)
+    if proc_path.exists():
         return pid
-    raise NotRunning("missing /proc/%d" % pid)
+    raise NotRunning("missing %s" % proc_path)
 
 def start_store():
-    if not path.exists(settings.tmpdir):
-        os.mkdir(settings.tmpdir)
+    settings.tmpdir.ensure_dir()
     with suppress(NotRunning):
         pid = get_pid()
         raise UnexpectedRunning('already running at pid %d' % pid)

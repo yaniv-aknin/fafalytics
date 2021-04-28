@@ -20,6 +20,7 @@ def configure(tmpdir='/tmp/.fafalytics.d'):
     settings.tmpdir = tmpdir
     settings.pidfile = tmpdir + '/redis.pid'
     settings.sockpath = tmpdir + '/redis.sock'
+REDIS_BINARY = 'redis-server'
 REDIS_CONF = """
 port 0
 unixsocket %s
@@ -78,7 +79,7 @@ def start_store():
     with suppress(NotRunning):
         pid = get_pid()
         raise UnexpectedRunning('already running at pid %d' % pid)
-    process = subprocess.Popen(['redis-server', '-'], stdin=PIPE, stdout=subprocess.DEVNULL)
+    process = subprocess.Popen([REDIS_BINARY, '-'], stdin=PIPE, stdout=subprocess.DEVNULL)
     process.stdin.write((REDIS_CONF % settings.sockpath).encode())
     process.stdin.close()
     write_pid(process.pid)
@@ -87,6 +88,7 @@ def start_store():
 def stop_store():
     pid = get_pid()
     os.kill(pid, signal.SIGTERM)
+    os.wait()
     block_wait(10, 0.1, error=UnexpectedRunning('pid %d failed to exit' % pid), predicate=negate(is_running))
 
 @click.group()

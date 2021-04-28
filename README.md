@@ -1,5 +1,7 @@
 # fafalytics
 
+![Build Status](https://github.com/yaniv-aknin/fafalytics/actions/workflows/test.yml/badge.svg?branch=main)
+
 Suite of CLI tools to help analyse [FAF](http://faforever.com) games.
 
 ## Overview

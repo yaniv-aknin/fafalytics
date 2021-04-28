@@ -90,7 +90,8 @@ def start_store():
 def stop_store():
     pid = get_pid()
     os.kill(pid, signal.SIGTERM)
-    os.wait()
+    with suppress(ChildProcessError):
+        os.wait()
     block_wait(10, 0.1, error=UnexpectedRunning('pid %d failed to exit' % pid), predicate=negate(is_running))
 
 @click.group()

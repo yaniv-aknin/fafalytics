@@ -1,3 +1,7 @@
+"""The extractor module contains feature extraction logic for replay files.
+
+https://en.wikipedia.org/wiki/Feature_extraction
+"""
 import click
 
 from ..parsing import get_parsed

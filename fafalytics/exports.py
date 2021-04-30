@@ -44,14 +44,6 @@ def yield_deserilized_values(client, keys):
             'extract': json.loads(client.hget('extract', key)),
         }
 
-def write_dataframe_in_format(objects, filename, fmt=None):
-    df = pd.json_normalize(objects).set_index('id')
-    fmt = fmt or 'csv' if filename.endswith('csv') else 'parquet'
-    if fmt == 'csv':
-        df.to_csv(filename)
-    else:
-        df.to_parquet(filename)
-
 class InvalidObject(ValueError):
     pass
 Q = partial(Query, reraise=InvalidObject)
@@ -126,9 +118,9 @@ def build_curated_dict(obj):
 @log_invocation
 @click.option('--format', type=click.Choice(['parquet', 'csv']))
 @click.option('--game-ids', multiple=True, type=int)
-@click.argument('output', type=click.Path(dir_okay=False, writable=True))
+@click.argument('outfile', type=click.Path(dir_okay=False, writable=True))
 @click.pass_context
-def export(ctx, format, game_ids, output):
+def export(ctx, format, game_ids, outfile):
     "Dump datastore into a CSV/Parquet file"
     client = get_client()
     game_ids = [str(game_id).encode() for game_id in game_ids]
@@ -137,13 +129,19 @@ def export(ctx, format, game_ids, output):
     ctx.obj = (client, game_ids)
 
 @export.resultcallback()
-def export_callback(retval, format, game_ids, output):
+def export_callback(retval, format, game_ids, outfile):
     objects, invalid = retval
     if not objects:
         click.secho('(nothing to write)')
         return
-    with EchoTimer('Writing %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
-        write_dataframe_in_format(objects, output, format)
+    with EchoTimer('Adding %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
+        df = pd.json_normalize(objects).set_index('id')
+        fmt = fmt or 'csv' if outfile.endswith('csv') else 'parquet'
+    with EchoTimer('Writing %dkb dataframe to %s' % (df.memory_usage(index=True).sum()/1024, fmt)):
+        if fmt == 'csv':
+            df.to_csv(outfile)
+        else:
+            df.to_parquet(outfile)
 
 @export.command()
 @click.pass_context

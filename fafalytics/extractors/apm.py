@@ -33,7 +33,7 @@ class APM(Extractor):
             self.thresholds.pop(threshold)
     def emit(self):
         def pkey(player, label):
-            return 'player%d.mean_apm.%s' % (player, label)
+            return 'player%d.mean_apm.%s' % (player + 1, label)
         results = {}
         for player, stats in self.actions.items():
             results[pkey(player, 'overall')] = self.last_offset.per_minute_or_none(stats['overall'])

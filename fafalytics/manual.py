@@ -4,6 +4,7 @@ import pandas as pd
 from .parsing import get_parsed
 from .manyfiles import process_all_files
 from .pyutils import shell as python_shell
+from .pdutils import patch_dataframe_with_query_columns
 
 @click.group()
 def manual():
@@ -20,6 +21,7 @@ def replay(infiles):
 @manual.command()
 @click.argument('infile', type=click.Path(exists=True, dir_okay=False))
 def dataframe(infile):
+    patch_dataframe_with_query_columns()
     df = pd.read_pickle(infile)
     python_shell({'df': df, 'pd': pd})
 

@@ -29,16 +29,25 @@ def dataframe(infile):
 def clean(infile, outfile):
     df = pd.read_pickle(infile)
     old_shape = df.shape
+
+    # add convenience values
     for prefix in ('player1.player.', 'player2.player.'):
         df[prefix + 'faf_rating.before'] = df[prefix + 'trueskill_mean_before'] - 3 * df[prefix + 'trueskill_deviation_before']
     df['meta.rating_delta'] = (df['player1.player.faf_rating.before']-df['player2.player.faf_rating.before']).abs().astype('int32')
     df['meta.rating_mean'] = ((df['player1.player.faf_rating.before']+df['player2.player.faf_rating.before'])/2).astype('int32')
-    df['map.area'] = df['map.width'] * df['map.height']
-    df = df[df['durations.ticks']>10*60*3]    # 10*60*3 ticks == 3 minutes
-    df = df[df['durations.ticks']<10*60*60*6] # 10*60*60*6 ticks == 6 hours
-    df = df[df['player1.player.faf_rating.before']>-250]
-    df = df[df['player1.player.faf_rating.before']<3000]
-    df = df[df['player2.player.faf_rating.before']>-250]
-    df = df[df['player2.player.faf_rating.before']<3000]
+    df['meta.duration'] = pd.to_timedelta(df['durations.ticks'] * 10, unit='seconds')
+
+    # filter unreasonable values
+    THREE_MINUTES_IN_TICKS = 10*60*3
+    SIX_HOURS_IN_TICKS = 10*60*60*6
+    df = df[
+        (df['durations.ticks'] > THREE_MINUTES_IN_TICKS) &
+        (df['durations.ticks'] < SIX_HOURS_IN_TICKS) &
+        (df['player1.player.faf_rating.before'] > -250) &
+        (df['player1.player.faf_rating.before'] < 3000) &
+        (df['player2.player.faf_rating.before'] > -250) &
+        (df['player2.player.faf_rating.before'] < 3000)
+    ]
+
     df.to_pickle(outfile)
     print('Cleaned df %s to %s' % (old_shape, df.shape))

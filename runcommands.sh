@@ -14,5 +14,5 @@ function bigfafa {
     newfafa ../data-dumps/dump-02
 }
 function pqfafa {
-    fafalytics interactive dataframe /tmp/clean.pickle.gz
+    fafalytics manual dataframe /tmp/clean.pickle.gz
 }

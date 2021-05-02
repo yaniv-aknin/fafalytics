@@ -18,7 +18,7 @@ from .manual import manual
 
 
 @click.group(context_settings={'auto_envvar_prefix': 'FAFAL'})
-@click.option('--loggers', type=click.Choice(tuple(logs.handlers)), multiple=True, default=[first(handlers)])
+@click.option('--loggers', type=click.Choice(tuple(handlers)), multiple=True, default=[first(handlers)])
 @click.option('--loglevel', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=False), default='WARNING')
 def main(loggers, loglevel):
     configure()

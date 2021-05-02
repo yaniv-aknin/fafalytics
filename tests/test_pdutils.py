@@ -16,3 +16,4 @@ def test_qc(df):
     assert 'b' in df.qc.a.__dict__
     assert 'c' in df.qc.a.__dict__
     assert df.qc.a.b.sum() == 3
+    assert len(df[df.qc.a].columns) == 2

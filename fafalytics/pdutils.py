@@ -15,18 +15,19 @@ class QueryColumns:
     >>> df.qc.a.b.d
     0    4
     Name: a.b.d, dtype: int64
-    >>>
+    >>> df[df.qc.a.b]
+       a.b.c  a.b.d
+    0      3      4
+    >>> 
     """
     def __init__(self, separator, df=None, path=''):
         self._separator = separator
         self._df = df
         self._path = path
-
     def _prefixes(self, path):
         potential = [c for c in self._df.columns if c.startswith(path)]
         chop = '' if not path else (path + '.')
         return {p.replace(chop, '').partition(self._separator)[0] for p in potential}
-
     def __getattribute__(self, attr):
         if attr.startswith('_') or attr == 'P':
             return super().__getattribute__(attr)
@@ -44,13 +45,13 @@ class QueryColumns:
         #       we only add the keys to .__dict__(), so that IDEs can autocomplete the next set of fields
         retval.__dict__.update({p: None for p in prefixes})
         return retval
-
     def __get__(self, obj, obj_type):
         assert isinstance(obj, pd.DataFrame)
         self._df = obj
         self.__dict__.update({p: None for p in self._prefixes(self._path)})
         return self
-
+    def __iter__(self):
+        return (c for c in self._df.columns if c.startswith(self._path))
     def __repr__(self):
         return '<%s @ %s: %s>' % (self.__class__.__name__, self._path or '[root]', ", ".join(self._prefixes(self._path)))
         

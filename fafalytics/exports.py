@@ -116,7 +116,7 @@ def build_curated_dict(obj):
 
 @click.group()
 @log_invocation
-@click.option('--format', type=click.Choice(['parquet', 'csv']))
+@click.option('--format', type=click.Choice(['parquet', 'csv', 'pickle']), default='pickle')
 @click.option('--game-ids', multiple=True, type=int)
 @click.argument('outfile', type=click.Path(dir_okay=False, writable=True))
 @click.pass_context
@@ -136,12 +136,13 @@ def export_callback(retval, format, game_ids, outfile):
         return
     with EchoTimer('Adding %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
         df = pd.json_normalize(objects).set_index('id')
-        format = format or ('csv' if outfile.endswith('csv') else 'parquet')
     with EchoTimer('Writing %dkb dataframe to %s' % (df.memory_usage(index=True).sum()/1024, format)):
         if format == 'csv':
             df.to_csv(outfile)
-        else:
+        elif format == 'parquet':
             df.to_parquet(outfile)
+        else:
+            df.to_pickle(outfile)
 
 @export.command()
 @click.pass_context

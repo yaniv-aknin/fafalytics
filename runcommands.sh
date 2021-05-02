@@ -7,12 +7,12 @@ function newfafa {
     fafalytics datastore restart
     fafalytics load $data_dir/jsons/*
     fafalytics extract --max-errors 0 $data_dir/unpacked/*
-    fafalytics export /tmp/dirty.parquet curated
-    fafalytics manual clean /tmp/dirty.parquet /tmp/clean.parquet
+    fafalytics export --format=pickle /tmp/dirty.pickle.gz curated
+    fafalytics manual clean /tmp/dirty.pickle.gz /tmp/clean.pickle.gz
 }
 function bigfafa {
     newfafa ../data-dumps/dump-02
 }
 function pqfafa {
-    fafalytics interactive dataframe /tmp/clean.parquet
+    fafalytics interactive dataframe /tmp/clean.pickle.gz
 }

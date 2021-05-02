@@ -136,9 +136,9 @@ def export_callback(retval, format, game_ids, outfile):
         return
     with EchoTimer('Adding %d objects to dataframe (%d invalid/skipped)' % (len(objects), invalid)):
         df = pd.json_normalize(objects).set_index('id')
-        fmt = fmt or 'csv' if outfile.endswith('csv') else 'parquet'
-    with EchoTimer('Writing %dkb dataframe to %s' % (df.memory_usage(index=True).sum()/1024, fmt)):
-        if fmt == 'csv':
+        format = format or ('csv' if outfile.endswith('csv') else 'parquet')
+    with EchoTimer('Writing %dkb dataframe to %s' % (df.memory_usage(index=True).sum()/1024, format)):
+        if format == 'csv':
             df.to_csv(outfile)
         else:
             df.to_parquet(outfile)

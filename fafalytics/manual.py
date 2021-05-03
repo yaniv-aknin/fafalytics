@@ -1,10 +1,11 @@
 import click
 import pandas as pd
 
+from querycolumns import patch_dataframe_with_query_columns
+
 from .parsing import get_parsed
 from .manyfiles import process_all_files
 from .pyutils import shell as python_shell
-from .pdutils import patch_dataframe_with_query_columns
 from .clean import clean_dataframe
 
 @click.group()

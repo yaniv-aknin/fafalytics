@@ -9,3 +9,4 @@ git+git://github.com/FAForever/faf-scfa-replay-parser@9d0cb7cb4bb0cf6d8be44e5c1e
 littletable
 shapely
 py
+querycolumns

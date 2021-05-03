@@ -22,17 +22,12 @@ def replay(infiles):
 
 @manual.command()
 @click.argument('infile', type=click.Path(exists=True, dir_okay=False))
-def dataframe(infile):
+@click.option('--clean/--no-clean', default=True)
+def dataframe(infile, clean):
     patch_dataframe_with_query_columns()
-    df = pd.read_pickle(infile)
+    df = pd.read_parquet(infile)
+    if clean:
+        old_shape = df.shape
+        df = clean_dataframe(df)
+        print('Cleaned df %s to %s' % (old_shape, df.shape))
     python_shell({'df': df, 'pd': pd})
-
-@manual.command()
-@click.argument('infile', type=click.Path(exists=True, dir_okay=False))
-@click.argument('outfile', type=click.Path(exists=False, dir_okay=False))
-def clean(infile, outfile):
-    df = pd.read_pickle(infile)
-    old_shape = df.shape
-    df = clean_dataframe(df)
-    df.to_pickle(outfile)
-    print('Cleaned df %s to %s' % (old_shape, df.shape))

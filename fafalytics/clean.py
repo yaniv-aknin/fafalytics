@@ -23,7 +23,7 @@ def clean_dataframe(df, min_duration=THREE_MINUTES_IN_TICKS, max_duration=SIX_HO
     df['meta.rating.bucket'] = pd.cut(df['meta.rating.mean'], bins=RATING_BINS)
 
     # filter unreasonable values
-    return df[
+    df = df[
         (df['durations.database.start'] > games_after) &
         (df['durations.database.start'] < games_before) &
         (df['durations.ticks'] > min_duration) &
@@ -33,3 +33,13 @@ def clean_dataframe(df, min_duration=THREE_MINUTES_IN_TICKS, max_duration=SIX_HO
         (df['player2.player.faf_rating.before'] > min_rating) &
         (df['player2.player.faf_rating.before'] < max_rating)
     ]
+
+    # move player keys to suffix; https://stackoverflow.com/q/67393474/459852
+    def rename_column(column, *keys):
+        for key in keys:
+            if key not in column:
+                continue
+            column = column.replace(('%s.' % key), '') + ('.%s' % key)
+        return column
+    df.columns = [rename_column(c, 'player1', 'player2') for c in df.columns]
+    return df

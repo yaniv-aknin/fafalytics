@@ -20,7 +20,7 @@ def build_url(api_base, page_size, max_pages, page_number, start_date, end_date,
     url = url.add_query_param('page[size]', page_size)
     url = url.add_query_param('page[number]', page_number)
     url = url.add_query_param('page[totals]', '')
-    filter_param = ['((playerStats.ratingChanges.leaderboard.id=in=("2");validity=in=("VALID"))']
+    filter_param = ['((playerStats.ratingChanges.leaderboard.id=="2";validity=="VALID")']
     if start_date:
         filter_param.append(';endTime=ge="%s"' % isoformat(start_date))
     if end_date:

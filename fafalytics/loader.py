@@ -14,6 +14,9 @@ class GameJsonResolver:
         ('mapVersion',),
         ('mapVersion', 'map'),
     )
+    keep_relationships = (
+        ('featuredMod',),
+    )
     def __init__(self, doc: dict):
         self.doc = doc
         self.objects = {}
@@ -45,6 +48,8 @@ class GameJsonResolver:
         for rel_type, rel_data in obj.get('relationships', {}).items():
             rel_data = rel_data['data']
             new_path = path + (rel_type,)
+            if new_path in self.keep_relationships:
+                result[rel_type] = rel_data['id']
             if new_path not in self.inline_relationships:
                 continue
             if isinstance(rel_data, list):
@@ -60,12 +65,27 @@ class GameJsonResolver:
         for game in self.doc['data']:
             yield self.resolve(game, ())
 
+def permit_game(game, only_valid=True, only_1v1=True, featured_mod=6):
+    if only_valid and game['validity'] != 'VALID':
+        return False
+    if only_1v1 and len(game['playerStats']) != 2:
+        return False
+    if featured_mod != -1 and game['featuredMod'] != featured_mod:
+        return False
+    return True
+
 @click.command()
 @log_invocation
+@click.option('--only-valid/--all-games', default=True)
+@click.option('--only-1v1/--any-number-of-players', default=True)
+@click.option('--featured-mod', type=int, default=6)
 @click.argument('jsons', nargs=-1, type=click.File('rb'))
 @yields_outputs
-def load(output, jsons):
+def load(output, only_valid, only_1v1, featured_mod, jsons):
     "Load Game model JSONs into datastore"
     with click.progressbar(jsons, label='Loading') as bar:
         for json in bar:
-            yield from GameJsonResolver.from_handle(json)
+            for game in GameJsonResolver.from_handle(json):
+                if not permit_game(game, only_valid, only_1v1, featured_mod):
+                    continue
+                yield game

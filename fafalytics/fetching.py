@@ -51,6 +51,9 @@ def games(api_base, page_size, max_pages, start_date, duration_weeks, sleep_inte
     first_url = build_url(api_base, page_size, max_pages, 1, start_date, duration_weeks)
     print('Fetching 1st page...')
     first_response = requests.get(first_url).json()
+    if first_response['meta']['page']['totalRecords'] == 0:
+        print('(empty response)')
+        return
     write_response(output_directory, 1, first_response)
     total_pages = first_response['meta']['page']['totalPages']
     will_fetch = total_pages if max_pages is None else min(total_pages, max_pages)

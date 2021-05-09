@@ -46,12 +46,16 @@ def fetch():
 @click.option('--start-date', type=click.DateTime(['%Y-%m-%d']), default=None)
 @click.option('--end-date', type=click.DateTime(['%Y-%m-%d']), default=None)
 @click.option('--sleep-interval', type=float, default=10)
-@click.option('--dry-run/--no-dry-run', default=False)
+@click.option('--run-type', type=click.Choice(['dry', 'damp', 'wet']), default='dry',
+              help='Dry run prints the first URL and exists. Damp run fetches first URL and exists. Wet run fetches everything.')
 @click.option('--sort', type=click.Choice(['ASC', 'DESC']), default='ASC')
 @click.argument('output_directory', type=click.Path())
-def games(api_base, page_size, max_pages, start_date, end_date, sleep_interval, dry_run, sort, output_directory):
+def games(api_base, page_size, max_pages, start_date, end_date, sleep_interval, run_type, sort, output_directory):
     "Get JSON dumps of Game model objects from api.faforever.com"
     first_url = build_url(api_base, page_size, max_pages, 1, start_date, end_date, sort)
+    if run_type == 'dry':
+        print(first_url)
+        return
     print('Fetching 1st page...')
     first_response = requests.get(first_url).json()
     if first_response['meta']['page']['totalRecords'] == 0:
@@ -67,7 +71,8 @@ def games(api_base, page_size, max_pages, start_date, end_date, sleep_interval, 
                 break
             time.sleep(sleep_interval)
             url = build_url(api_base, page_size, max_pages, page_number, start_date, end_date, sort)
-            if dry_run:
+            if run_type == 'damp':
+                print(url)
                 continue
             write_response(output_directory, page_number, requests.get(url).json())
 

@@ -1,5 +1,6 @@
 import json
 
+import zstd
 import click
 
 from .storage import get_client
@@ -23,7 +24,10 @@ class GameJsonResolver:
             raise ValueError('expected game models from api.faforever.com/data/game')
     @classmethod
     def from_handle(cls, handle):
-        instance = cls(json.load(handle))
+        buf = handle.read()
+        if handle.name.endswith('.zst'):
+            buf = zstd.decompress(buf)
+        instance = cls(json.loads(buf))
         instance.populate()
         return instance
     def populate(self):
@@ -58,7 +62,7 @@ class GameJsonResolver:
 
 @click.command()
 @log_invocation
-@click.argument('jsons', nargs=-1, type=click.File('r'))
+@click.argument('jsons', nargs=-1, type=click.File('rb'))
 @yields_outputs
 def load(output, jsons):
     "Load Game model JSONs into datastore"

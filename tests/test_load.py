@@ -3,10 +3,17 @@ import testutils
 from fafalytics import loader
 from fafalytics.pyutils import Query as Q
 
-def test_load():
-    dump = testutils.testdata / 'dump.json'
-    with open(dump) as handle:
+def load(path):
+    with open(path, 'rb') as handle:
         resolver = loader.GameJsonResolver.from_handle(handle)
-        games = {game['id']: game for game in resolver}
+        return {game['id']: game for game in resolver}
+
+def test_load():
+    games = load(testutils.testdata / 'dump.json')
+    game = games['14395861']
+    assert Q('playerStats/0/id')(game) == '28030229'
+
+def test_load_zstd():
+    games = load(testutils.testdata / 'dump.json.zst')
     game = games['14395861']
     assert Q('playerStats/0/id')(game) == '28030229'

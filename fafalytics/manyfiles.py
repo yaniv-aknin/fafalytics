@@ -32,7 +32,7 @@ def yield_processed_files(infiles, callback, max_errors=None, catch=(Exception,)
                 raise
             max_errors -= 1
             logging.error('processing %s raised %s:%s', infile, error.__class__.__name__, error)
-    stats = dict(pd.Series(durations).describe())
+    stats = dict(pd.Series(durations, dtype='float64').describe())
     stats['sum'] = sum(durations)
     logging.info('processed: %s', ','.join('%s=%.1f' % (k,v) for k,v in stats.items()))
 

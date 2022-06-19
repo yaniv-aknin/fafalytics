@@ -128,7 +128,7 @@ def export(ctx, format, game_ids, outfile):
         game_ids = get_valid_game_ids(client)
     ctx.obj = (client, game_ids)
 
-@export.resultcallback()
+@export.result_callback()
 def export_callback(retval, format, game_ids, outfile):
     objects, invalid = retval
     if not objects:
